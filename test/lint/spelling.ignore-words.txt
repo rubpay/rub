@@ -11,6 +11,7 @@ hist
 inout
 invokable
 lief
+keypair
 mor
 nd
 nin
