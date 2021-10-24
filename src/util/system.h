@@ -175,8 +175,13 @@ struct SectionInfo
 };
 
 std::string SettingToString(const util::SettingsValue&, const std::string&);
+std::optional<std::string> SettingToString(const util::SettingsValue&);
+
 int64_t SettingToInt(const util::SettingsValue&, int64_t);
+std::optional<int64_t> SettingToInt(const util::SettingsValue&);
+
 bool SettingToBool(const util::SettingsValue&, bool);
+std::optional<bool> SettingToBool(const util::SettingsValue&);
 
 class ArgsManager
 {
@@ -359,6 +364,7 @@ protected:
      * @return command-line argument or default value
      */
     std::string GetArg(const std::string& strArg, const std::string& strDefault) const;
+    std::optional<std::string> GetArg(const std::string& strArg) const;
 
     /**
      * Return path argument or default value
@@ -380,6 +386,7 @@ protected:
      * @return command-line argument (0 if invalid number) or default value
      */
     int64_t GetIntArg(const std::string& strArg, int64_t nDefault) const;
+    std::optional<int64_t> GetIntArg(const std::string& strArg) const;
 
     /**
      * Return boolean argument or default value
@@ -389,6 +396,7 @@ protected:
      * @return command-line argument or default value
      */
     bool GetBoolArg(const std::string& strArg, bool fDefault) const;
+    std::optional<bool> GetBoolArg(const std::string& strArg) const;
 
     /**
      * Set an argument if it doesn't already have a value
