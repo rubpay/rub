@@ -302,15 +302,22 @@ util::Result<CTxDestination> LegacyScriptPubKeyMan::GetReservedDestination(bool 
     return CTxDestination(PKHash(keypool.vchPubKey));
 }
 
-void LegacyScriptPubKeyMan::MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time)
+std::vector<WalletDestination> LegacyScriptPubKeyMan::MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time)
 {
     LOCK(cs_KeyStore);
+    std::vector<WalletDestination> result;
     // extract addresses and check if they match with an unused keypool key
     for (const auto& keyid : GetAffectedKeys(script, *this)) {
         std::map<CKeyID, int64_t>::const_iterator mi = m_pool_key_to_index.find(keyid);
         if (mi != m_pool_key_to_index.end()) {
             WalletLogPrintf("%s: Detected a used keypool key, mark all keypool key up to this key as used\n", __func__);
-            MarkReserveKeysAsUsed(mi->second);
+            for (const auto& keypool : MarkReserveKeysAsUsed(mi->second)) {
+                // derive all possible destinations as any of them could have been used
+                { // [dashified] LEGACY_OUTPUT_TYPES is only one: LEGACY
+                    // TODO: maybe unify with bitcoin and use here GetDestinationForKey even if we have no type
+                    result.push_back({CTxDestination{PKHash{keypool.vchPubKey}}, keypool.fInternal});
+                }
+            }
 
             if (!TopUpInner()) {
                 WalletLogPrintf("%s: Topping up keypool failed (locked wallet)\n", __func__);
@@ -328,6 +335,8 @@ void LegacyScriptPubKeyMan::MarkUnusedAddresses(WalletBatch &batch, const CScrip
             }
         }
     }
+
+    return result;
 }
 
 void LegacyScriptPubKeyMan::UpgradeKeyMetadata()
@@ -1612,7 +1621,7 @@ bool LegacyScriptPubKeyMan::ReserveKeyFromKeyPool(int64_t& nIndex, CKeyPool& key
     return true;
 }
 
-void LegacyScriptPubKeyMan::MarkReserveKeysAsUsed(int64_t keypool_id)
+std::vector<CKeyPool> LegacyScriptPubKeyMan::MarkReserveKeysAsUsed(int64_t keypool_id)
 {
     AssertLockHeld(cs_KeyStore);
     bool internal = setInternalKeyPool.count(keypool_id);
@@ -1620,6 +1629,7 @@ void LegacyScriptPubKeyMan::MarkReserveKeysAsUsed(int64_t keypool_id)
     std::set<int64_t> *setKeyPool = internal ? &setInternalKeyPool : &setExternalKeyPool;
     auto it = setKeyPool->begin();
 
+    std::vector<CKeyPool> result;
     WalletBatch batch(m_storage.GetDatabase());
     while (it != std::end(*setKeyPool)) {
         const int64_t& index = *(it);
@@ -1632,7 +1642,10 @@ void LegacyScriptPubKeyMan::MarkReserveKeysAsUsed(int64_t keypool_id)
         batch.ErasePool(index);
         WalletLogPrintf("keypool index %d removed\n", index);
         it = setKeyPool->erase(it);
+        result.push_back(std::move(keypool));
     }
+
+    return result;
 }
 
 std::vector<CKeyID> GetAffectedKeys(const CScript& spk, const SigningProvider& provider)
@@ -2003,19 +2016,32 @@ bool DescriptorScriptPubKeyMan::TopUp(unsigned int size)
     return true;
 }
 
-void DescriptorScriptPubKeyMan::MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time)
+std::vector<WalletDestination> DescriptorScriptPubKeyMan::MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time)
 {
     LOCK(cs_desc_man);
+    std::vector<WalletDestination> result;
     if (IsMine(script)) {
         int32_t index = m_map_script_pub_keys[script];
         if (index >= m_wallet_descriptor.next_index) {
             WalletLogPrintf("%s: Detected a used keypool item at index %d, mark all keypool items up to this item as used\n", __func__, index);
-            m_wallet_descriptor.next_index = index + 1;
+            auto out_keys = std::make_unique<FlatSigningProvider>();
+            std::vector<CScript> scripts_temp;
+            while (index >= m_wallet_descriptor.next_index) {
+                if (!m_wallet_descriptor.descriptor->ExpandFromCache(m_wallet_descriptor.next_index, m_wallet_descriptor.cache, scripts_temp, *out_keys)) {
+                    throw std::runtime_error(std::string(__func__) + ": Unable to expand descriptor from cache");
+                }
+                CTxDestination dest;
+                ExtractDestination(scripts_temp[0], dest);
+                result.push_back({dest, std::nullopt});
+                m_wallet_descriptor.next_index++;
+            }
         }
         if (!TopUp()) {
             WalletLogPrintf("%s: Topping up keypool failed (locked wallet)\n", __func__);
         }
     }
+
+    return result;
 }
 
 void DescriptorScriptPubKeyMan::AddDescriptorKey(const CKey& key, const CPubKey &pubkey)
