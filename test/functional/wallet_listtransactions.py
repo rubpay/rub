@@ -4,12 +4,15 @@
 # file COPYING or http://www.opensource.org/licenses/mit-license.php.
 """Test the listtransactions API."""
 from decimal import Decimal
+import os
+import shutil
 
 from test_framework.test_framework import BitcoinTestFramework
 from test_framework.util import (
     assert_array_result,
     assert_equal,
 )
+
 
 class ListTransactionsTest(BitcoinTestFramework):
     def set_test_params(self):
