@@ -126,7 +126,7 @@ BlockFilterIndex::BlockFilterIndex(std::unique_ptr<interfaces::Chain> chain, Blo
     m_filter_fileseq = std::make_unique<FlatFileSeq>(std::move(path), "fltr", FLTR_FILE_CHUNK_SIZE);
 }
 
-bool BlockFilterIndex::Init()
+bool BlockFilterIndex::CustomInit(const std::optional<interfaces::BlockKey>& block)
 {
     // Check version compatibility first
     int version = 0;
@@ -153,7 +153,7 @@ bool BlockFilterIndex::Init()
         m_next_filter_pos.nFile = 0;
         m_next_filter_pos.nPos = 0;
     }
-    return BaseIndex::Init();
+    return true;
 }
 
 bool BlockFilterIndex::CommitInternal(CDBBatch& batch)
