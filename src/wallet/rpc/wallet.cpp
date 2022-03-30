@@ -1147,6 +1147,7 @@ RPCHelpMan sendmany();
 RPCHelpMan settxfee();
 RPCHelpMan fundrawtransaction();
 RPCHelpMan send();
+RPCHelpMan sendall();
 RPCHelpMan walletprocesspsbt();
 RPCHelpMan walletcreatefundedpsbt();
 RPCHelpMan signrawtransactionwithwallet();
@@ -1216,6 +1217,7 @@ Span<const CRPCCommand> GetWalletRPCCommands()
         {"wallet", &removeprunedfunds},
         {"wallet", &rescanblockchain},
         {"wallet", &send},
+        {"wallet", &sendall},
         {"wallet", &sendmany},
         {"wallet", &sendtoaddress},
         {"wallet", &sethdseed},
