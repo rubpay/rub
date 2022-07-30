@@ -234,13 +234,13 @@ void DoCheck(const std::string& prv, const std::string& pub, const std::string& 
             // For each of the produced scripts, verify solvability, and when possible, try to sign a transaction spending it.
             for (size_t n = 0; n < spks.size(); ++n) {
                 BOOST_CHECK_EQUAL(ref[n], HexStr(spks[n]));
-                BOOST_CHECK_EQUAL(IsSolvable(Merge(key_provider, script_provider), spks[n]), (flags & UNSOLVABLE) == 0);
+                BOOST_CHECK_EQUAL(IsSolvable(FlatSigningProvider{key_provider}.Merge(FlatSigningProvider{script_provider}), spks[n]), (flags & UNSOLVABLE) == 0);
 
                 if (flags & SIGNABLE) {
                     CMutableTransaction spend;
                     spend.vin.resize(1);
                     spend.vout.resize(1);
-                    BOOST_CHECK_MESSAGE(SignSignature(Merge(keys_priv, script_provider), spks[n], spend, 0, 1, SIGHASH_ALL), prv);
+                    BOOST_CHECK_MESSAGE(SignSignature(FlatSigningProvider{keys_priv}.Merge(FlatSigningProvider{script_provider}), spks[n], spend, 0, 1, SIGHASH_ALL), prv);
                 }
 
                 /* Infer a descriptor from the generated script, and verify its solvability and that it roundtrips. */
