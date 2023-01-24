@@ -90,6 +90,7 @@ public:
         CoinJoinMultiSession, // bool
         Listen,               // bool
         Server,               // bool
+        MaskValues,           // bool
         OptionIDRowCount,
     };
 
@@ -140,6 +141,7 @@ private:
     bool m_use_embedded_monospaced_font;
     bool fCoinControlFeatures;
     bool m_sub_fee_from_amount;
+    bool m_mask_values;
     bool fKeepChangeAddress;
     bool fShowAdvancedCJUI;
 
