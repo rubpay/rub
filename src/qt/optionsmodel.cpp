@@ -61,6 +61,7 @@ static const char* SettingName(OptionsModel::OptionID option)
     case OptionsModel::Language: return "lang";
     //! Dash
     case OptionsModel::CoinJoinAmount: return "coinjoinamount";
+    case OptionsModel::CoinJoinMultiSession: return "coinjoinmultisession";
     case OptionsModel::CoinJoinRounds: return "coinjoinrounds";
     case OptionsModel::CoinJoinSessions: return "coinjoinsessions";
     default: throw std::logic_error(strprintf("GUI option %i has no corresponding node setting.", option));
@@ -296,7 +297,7 @@ bool OptionsModel::Init(bilingual_str& error)
     // and we want command-line parameters to overwrite the GUI settings.
     for (OptionID option : {DatabaseCache, ThreadsScriptVerif, SpendZeroConfChange, MapPortUPnP,
                             MapPortNatpmp, Listen, Server, Prune, ProxyUse, ProxyUseTor, Language,
-                            CoinJoinAmount, CoinJoinRounds, CoinJoinSessions}) {
+                            CoinJoinAmount, CoinJoinMultiSession, CoinJoinRounds, CoinJoinSessions}) {
         std::string setting = SettingName(option);
         if (node().isSettingIgnored(setting)) addOverriddenOption("-" + setting);
         try {
@@ -324,11 +325,6 @@ bool OptionsModel::Init(bilingual_str& error)
     m_sub_fee_from_amount = settings.value("SubFeeFromAmount", false).toBool();
 
     // CoinJoin
-    if (!settings.contains("fCoinJoinMultiSession"))
-        settings.setValue("fCoinJoinMultiSession", DEFAULT_COINJOIN_MULTISESSION);
-    if (!gArgs.SoftSetBoolArg("-coinjoinmultisession", settings.value("fCoinJoinMultiSession").toBool()))
-        addOverriddenOption("-coinjoinmultisession");
-
     if (!settings.contains("nCoinJoinDenomsGoal"))
         settings.setValue("nCoinJoinDenomsGoal", DEFAULT_COINJOIN_DENOMS_GOAL);
     if (!gArgs.SoftSetArg("-coinjoindenomsgoal", settings.value("nCoinJoinDenomsGoal").toString().toStdString()))
@@ -557,7 +553,7 @@ QVariant OptionsModel::getOption(OptionID option) const
     case CoinJoinDenomsHardCap:
         return settings.value("nCoinJoinDenomsHardCap");
     case CoinJoinMultiSession:
-        return settings.value("fCoinJoinMultiSession");
+        return SettingToBool(setting(), DEFAULT_COINJOIN_MULTISESSION);
 #endif
     case DisplayUnit:
         return QVariant::fromValue(m_display_bitcoin_unit);
@@ -780,10 +776,9 @@ bool OptionsModel::setOption(OptionID option, const QVariant& value)
         }
         break;
     case CoinJoinMultiSession:
-        if (settings.value("fCoinJoinMultiSession") != value)
-        {
+        if (changed()) {
             node().coinJoinOptions().setMultiSessionEnabled(value.toBool());
-            settings.setValue("fCoinJoinMultiSession", node().coinJoinOptions().isMultiSessionEnabled());
+            update(value.toBool());
         }
         break;
 #endif
@@ -1018,6 +1013,7 @@ void OptionsModel::checkAndMigrate()
     //! Dash
 #ifdef ENABLE_WALLET
     migrate_setting(CoinJoinAmount, "nCoinJoinAmount");
+    migrate_setting(CoinJoinMultiSession, "fCoinJoinMultiSession");
     migrate_setting(CoinJoinRounds, "nCoinJoinRounds");
     migrate_setting(CoinJoinSessions, "nCoinJoinSessions");
 #endif
