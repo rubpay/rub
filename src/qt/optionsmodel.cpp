@@ -61,6 +61,7 @@ static const char* SettingName(OptionsModel::OptionID option)
     case OptionsModel::Language: return "lang";
     //! Dash
     case OptionsModel::CoinJoinAmount: return "coinjoinamount";
+    case OptionsModel::CoinJoinDenomsGoal: return "coinjoindenomsgoal";
     case OptionsModel::CoinJoinMultiSession: return "coinjoinmultisession";
     case OptionsModel::CoinJoinRounds: return "coinjoinrounds";
     case OptionsModel::CoinJoinSessions: return "coinjoinsessions";
@@ -72,6 +73,7 @@ static bool RequiresNumWorkaround(OptionsModel::OptionID option)
 {
     switch (option) {
     case OptionsModel::CoinJoinAmount:
+    case OptionsModel::CoinJoinDenomsGoal:
     case OptionsModel::CoinJoinRounds:
     case OptionsModel::CoinJoinSessions:
     case OptionsModel::DatabaseCache:
@@ -297,7 +299,8 @@ bool OptionsModel::Init(bilingual_str& error)
     // and we want command-line parameters to overwrite the GUI settings.
     for (OptionID option : {DatabaseCache, ThreadsScriptVerif, SpendZeroConfChange, MapPortUPnP,
                             MapPortNatpmp, Listen, Server, Prune, ProxyUse, ProxyUseTor, Language,
-                            CoinJoinAmount, CoinJoinMultiSession, CoinJoinRounds, CoinJoinSessions}) {
+                            CoinJoinAmount, CoinJoinDenomsGoal, CoinJoinMultiSession, CoinJoinRounds,
+                            CoinJoinSessions}) {
         std::string setting = SettingName(option);
         if (node().isSettingIgnored(setting)) addOverriddenOption("-" + setting);
         try {
@@ -325,11 +328,6 @@ bool OptionsModel::Init(bilingual_str& error)
     m_sub_fee_from_amount = settings.value("SubFeeFromAmount", false).toBool();
 
     // CoinJoin
-    if (!settings.contains("nCoinJoinDenomsGoal"))
-        settings.setValue("nCoinJoinDenomsGoal", DEFAULT_COINJOIN_DENOMS_GOAL);
-    if (!gArgs.SoftSetArg("-coinjoindenomsgoal", settings.value("nCoinJoinDenomsGoal").toString().toStdString()))
-        addOverriddenOption("-coinjoindenomsgoal");
-
     if (!settings.contains("nCoinJoinDenomsHardCap"))
         settings.setValue("nCoinJoinDenomsHardCap", DEFAULT_COINJOIN_DENOMS_HARDCAP);
     if (!gArgs.SoftSetArg("-coinjoindenomshardcap", settings.value("nCoinJoinDenomsHardCap").toString().toStdString()))
@@ -549,7 +547,7 @@ QVariant OptionsModel::getOption(OptionID option) const
     case CoinJoinAmount:
         return qlonglong(SettingToInt(setting(), DEFAULT_COINJOIN_AMOUNT));
     case CoinJoinDenomsGoal:
-        return settings.value("nCoinJoinDenomsGoal");
+        return qlonglong(SettingToInt(setting(), DEFAULT_COINJOIN_DENOMS_GOAL));
     case CoinJoinDenomsHardCap:
         return settings.value("nCoinJoinDenomsHardCap");
     case CoinJoinMultiSession:
@@ -764,9 +762,9 @@ bool OptionsModel::setOption(OptionID option, const QVariant& value)
         }
         break;
     case CoinJoinDenomsGoal:
-        if (settings.value("nCoinJoinDenomsGoal") != value) {
+        if (changed()) {
             node().coinJoinOptions().setDenomsGoal(value.toInt());
-            settings.setValue("nCoinJoinDenomsGoal", node().coinJoinOptions().getDenomsGoal());
+            update(value.toInt());
         }
         break;
     case CoinJoinDenomsHardCap:
@@ -1013,6 +1011,7 @@ void OptionsModel::checkAndMigrate()
     //! Dash
 #ifdef ENABLE_WALLET
     migrate_setting(CoinJoinAmount, "nCoinJoinAmount");
+    migrate_setting(CoinJoinDenomsGoal, "nCoinJoinDenomsGoal");
     migrate_setting(CoinJoinMultiSession, "fCoinJoinMultiSession");
     migrate_setting(CoinJoinRounds, "nCoinJoinRounds");
     migrate_setting(CoinJoinSessions, "nCoinJoinSessions");
