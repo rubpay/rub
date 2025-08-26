@@ -67,6 +67,7 @@ static const char* SettingName(OptionsModel::OptionID option)
     case OptionsModel::CoinJoinMultiSession: return "coinjoinmultisession";
     case OptionsModel::CoinJoinRounds: return "coinjoinrounds";
     case OptionsModel::CoinJoinSessions: return "coinjoinsessions";
+    case OptionsModel::FontFamily: return "font-family";
     default: throw std::logic_error(strprintf("GUI option %i has no corresponding node setting.", option));
     }
 }
@@ -211,14 +212,13 @@ bool OptionsModel::Init(bilingual_str& error)
     if (!settings.contains("theme"))
         settings.setValue("theme", GUIUtil::getDefaultTheme());
 
-    if (!settings.contains("fontFamily"))
-        settings.setValue("fontFamily", GUIUtil::fontFamilyToString(GUIUtil::g_font_defaults.family));
-    if (gArgs.SoftSetArg("-font-family", settings.value("fontFamily").toString().toStdString())) {
-        if (GUIUtil::fontsLoaded()) {
-            GUIUtil::setFontFamily(GUIUtil::fontFamilyFromString(settings.value("fontFamily").toString()));
-        }
-    } else {
+    if (node().isSettingIgnored("font-family")) {
         addOverriddenOption("-font-family");
+    } else if (GUIUtil::fontsLoaded()) {
+        GUIUtil::setFontFamily(
+            GUIUtil::fontFamilyFromString(QString::fromStdString(
+            SettingToString(node().getPersistentSetting("font-family"),
+                            GUIUtil::fontFamilyToString(GUIUtil::g_font_defaults.family).toStdString()))));
     }
 
     if (!settings.contains("fontScale"))
@@ -554,7 +554,7 @@ QVariant OptionsModel::getOption(OptionID option) const
     case Theme:
         return settings.value("theme");
     case FontFamily:
-        return settings.value("fontFamily");
+        return QString::fromStdString(SettingToString(setting(), GUIUtil::fontFamilyToString(GUIUtil::g_font_defaults.family).toStdString()));
     case FontScale:
         return settings.value("fontScale");
     case FontWeightNormal: {
@@ -793,8 +793,8 @@ bool OptionsModel::setOption(OptionID option, const QVariant& value)
         // to allow instant theme changes.
         break;
     case FontFamily:
-        if (settings.value("fontFamily") != value) {
-            settings.setValue("fontFamily", value);
+        if (changed()) {
+            update(value.toString().toStdString());
         }
         break;
     case FontScale:
@@ -999,6 +999,9 @@ void OptionsModel::checkAndMigrate()
     migrate_setting(Language, "language");
 
     //! Dash
+    if (GUIUtil::fontsLoaded()) {
+        migrate_setting(FontFamily, "fontFamily");
+    }
 #ifdef ENABLE_WALLET
     migrate_setting(CoinJoinAmount, "nCoinJoinAmount");
     migrate_setting(CoinJoinDenomsGoal, "nCoinJoinDenomsGoal");
