@@ -40,6 +40,19 @@ static std::map<QPointer<QWidget>, std::tuple<FontWeight, bool, int>> mapFontUpd
 // Contains a list of supported font weights for all members of GUIUtil::FontFamily
 static std::map<FontFamily, std::vector<QFont::Weight>> mapSupportedWeights;
 
+//! Map between font weights, Montserrat's convention and italic availability
+static const std::map<QFont::Weight, std::tuple<QString, /*can_italic=*/bool>> mapMontserrat{{
+    {QFont::Black, {"Black", true}},
+    {QFont::Bold, {"Bold", true}},
+    {QFont::DemiBold, {"SemiBold", true}},
+    {QFont::ExtraBold, {"ExtraBold", true}},
+    {QFont::ExtraLight, {"ExtraLight", true}},
+    {QFont::Light, {"Light", true}},
+    {QFont::Medium, {"Medium", true}},
+    {QFont::Normal, {"Regular", false}},
+    {QFont::Thin, {"Thin", true}},
+}};
+
 FontFamily fontFamilyFromString(const QString& strFamily)
 {
     for (const auto& [family, family_str] : AVAILABLE_FONTS) {
@@ -166,32 +179,25 @@ bool loadFonts()
     // Before any font changes store the applications default font to use it as SystemDefault.
     osDefaultFont = std::make_unique<QFont>(QApplication::font());
 
-    QString family = fontFamilyToString(FontFamily::Montserrat);
-    QString italic = "Italic";
+    // Load Montserrat
+    const QString montserrat_str{fontFamilyToString(FontFamily::Montserrat)};
+    const QString italic_str{"Italic"};
 
-    std::map<QString, bool> mapStyles{
-        {"Thin", true},
-        {"ExtraLight", true},
-        {"Light", true},
-        {"Italic", false},
-        {"Regular", false},
-        {"Medium", true},
-        {"SemiBold", true},
-        {"Bold", true},
-        {"ExtraBold", true},
-        {"Black", true},
-    };
-
-    QFontDatabase database;
     std::vector<int> vecFontIds;
-
-    for (const auto& it : mapStyles) {
-        QString font = ":fonts/" + family + "-" + it.first;
-        vecFontIds.push_back(QFontDatabase::addApplicationFont(font));
-        qDebug() << __func__ << ": " << font << " loaded with id " << vecFontIds.back();
-        if (it.second) {
-            vecFontIds.push_back(QFontDatabase::addApplicationFont(font + italic));
-            qDebug() << __func__ << ": " << font + italic << " loaded with id " << vecFontIds.back();
+    QString font_str;
+    // Import the italic Montserrat variant as it doesn't map to a weight
+    font_str = ":fonts/" + montserrat_str + "-" + italic_str;
+    vecFontIds.push_back(QFontDatabase::addApplicationFont(font_str));
+    qDebug() << __func__ << ": " << font_str << " loaded with id " << vecFontIds.back();
+    // Import the rest of Montserrat variants
+    for (const auto& [_, val] : mapMontserrat) {
+        const auto& [variant, can_italic] = val;
+        font_str = ":fonts/" + montserrat_str + "-" + variant;
+        vecFontIds.push_back(QFontDatabase::addApplicationFont(font_str));
+        qDebug() << __func__ << ": " << font_str << " loaded with id " << vecFontIds.back();
+        if (can_italic) {
+            vecFontIds.push_back(QFontDatabase::addApplicationFont(font_str + italic_str));
+            qDebug() << __func__ << ": " << font_str + italic_str << " loaded with id " << vecFontIds.back();
         }
     }
 
@@ -201,27 +207,28 @@ bool loadFonts()
         return false;
     }
 
+#ifndef QT_NO_DEBUG
+    QFontDatabase database;
+
     // Print debug logs for added fonts fetched by the added ids
     for (const auto& i : vecFontIds) {
-        auto families = QFontDatabase::applicationFontFamilies(i);
-        for (const QString& f : families) {
+        for (const QString& f : QFontDatabase::applicationFontFamilies(i)) {
             qDebug() << __func__ << ": - Font id " << i << " is family: " << f;
-            const QStringList fontStyles = database.styles(f);
-            for (const QString& style : fontStyles) {
+            for (const QString& style : database.styles(f)) {
                 qDebug() << __func__ << ": Style for family " << f << " with id: " << i << ": " << style;
             }
         }
     }
+
     // Print debug logs for added fonts fetched by the family name
-    const QStringList fontFamilies = database.families();
-    for (const QString& f : fontFamilies) {
-        if (f.contains(family)) {
-            const QStringList fontStyles = database.styles(f);
-            for (const QString& style : fontStyles) {
+    for (const QString& f : database.families()) {
+        if (f.contains(montserrat_str)) {
+            for (const QString& style : database.styles(f)) {
                 qDebug() << __func__ << ": Family: " << f << ", Style: " << style;
             }
         }
     }
+#endif // QT_NO_DEBUG
 
     setApplicationFont();
 
@@ -347,7 +354,7 @@ void setFont(const std::vector<QWidget*>& vecWidgets, FontWeight weight, int nPo
 
 void updateFonts()
 {
-    // Fonts need to be loaded by GUIIUtil::loadFonts(), if not just return.
+    // Fonts need to be loaded by GUIUtil::loadFonts(), if not just return.
     if (!osDefaultFont) {
         return;
     }
@@ -459,46 +466,35 @@ QFont getFont(FontFamily family, QFont::Weight qWeight, bool fItalic, int nPoint
     }
 
     if (family == FontFamily::Montserrat) {
-        static std::map<QFont::Weight, QString> mapMontserratMapping{
-            {QFont::Thin, "Thin"},
-            {QFont::ExtraLight, "ExtraLight"},
-            {QFont::Light, "Light"},
-            {QFont::Medium, "Medium"},
-            {QFont::DemiBold, "SemiBold"},
-            {QFont::ExtraBold, "ExtraBold"},
-            {QFont::Black, "Black"},
+        assert(mapMontserrat.count(qWeight));
 #ifdef Q_OS_MAC
-            {QFont::Normal, "Regular"},
-            {QFont::Bold, "Bold"},
-#else
-            {QFont::Normal, ""},
-            {QFont::Bold, ""},
-#endif
-        };
-
-        assert(mapMontserratMapping.count(qWeight));
-
-#ifdef Q_OS_MAC
-
-        QString styleName = mapMontserratMapping[qWeight];
-
-        if (fItalic) {
-            if (styleName == "Regular") {
-                styleName = "Italic";
-            } else {
-                styleName += " Italic";
-            }
-        }
-
         font.setFamily(fontFamilyToString(FontFamily::Montserrat));
-        font.setStyleName(styleName);
+        font.setStyleName([&](){
+            QString ret{std::get<0>(mapMontserrat.at(qWeight))};
+            if (fItalic) {
+                if (ret == "Regular") {
+                    ret = "Italic";
+                } else {
+                    ret += " Italic";
+                }
+            }
+            return ret;
+        }());
 #else
-        font.setFamily(fontFamilyToString(FontFamily::Montserrat) + " " + mapMontserratMapping[qWeight]);
-        font.setWeight(qWeight);
-        font.setStyle(fItalic ? QFont::StyleItalic : QFont::StyleNormal);
-#endif
+        if (qWeight == QFont::Normal || qWeight == QFont::Bold) {
+            font.setFamily(fontFamilyToString(FontFamily::Montserrat));
+        } else {
+            font.setFamily(fontFamilyToString(FontFamily::Montserrat) + " " + std::get<0>(mapMontserrat.at(qWeight)));
+        }
+#endif // Q_OS_MAC
     } else {
         font.setFamily(osDefaultFont->family());
+    }
+
+#ifdef Q_OS_MAC
+    if (family != FontFamily::Montserrat)
+#endif // Q_OS_MAC
+    {
         font.setWeight(qWeight);
         font.setStyle(fItalic ? QFont::StyleItalic : QFont::StyleNormal);
     }
