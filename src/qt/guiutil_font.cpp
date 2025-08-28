@@ -490,6 +490,8 @@ QFont getFont(FontFamily family, QFont::Weight qWeight, bool fItalic, int nPoint
     } else if (family == FontFamily::RobotoMono) {
         font.setFamily(fontFamilyToString(FontFamily::RobotoMono));
         font.setStyleHint(QFont::Monospace);
+    } else if (family == FontFamily::DefaultMonospace) {
+        font.setFamily(fixedPitchFont(/*use_embedded_font*/false).family());
     } else {
         font.setFamily(osDefaultFont->family());
     }
