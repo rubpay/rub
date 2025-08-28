@@ -35,8 +35,8 @@ static int fontScale = g_font_defaults.scale;
 // Contains the weight settings separated for all available fonts
 static std::map<FontFamily, std::pair<QFont::Weight, QFont::Weight>> mapDefaultWeights;
 static std::map<FontFamily, std::pair<QFont::Weight, QFont::Weight>> mapWeights;
-// Contains all widgets and its font attributes (weight, italic, size) with font changes due to GUIUtil::setFont
-static std::map<QPointer<QWidget>, std::tuple<FontWeight, bool, int>> mapFontUpdates;
+// Contains all widgets and its font attributes (family, weight, italic, size) with font changes due to GUIUtil::setFont
+static std::map<QPointer<QWidget>, std::tuple<FontFamily, FontWeight, bool, int>> mapFontUpdates;
 // Contains a list of supported font weights for all members of GUIUtil::FontFamily
 static std::map<FontFamily, std::vector<QFont::Weight>> mapSupportedWeights;
 
@@ -343,8 +343,13 @@ void setApplicationFont()
 
 void setFont(const std::vector<QWidget*>& vecWidgets, FontWeight weight, int nPointSize, bool fItalic)
 {
+    setFont(vecWidgets, fontFamily, weight, nPointSize, fItalic);
+}
+
+void setFont(const std::vector<QWidget*>& vecWidgets, FontFamily family, FontWeight weight, int nPointSize, bool fItalic)
+{
     for (auto it : vecWidgets) {
-        auto fontAttributes = std::make_tuple(weight, fItalic, nPointSize);
+        auto fontAttributes = std::make_tuple(family, weight, fItalic, nPointSize);
         auto itFontUpdate = mapFontUpdates.emplace(std::make_pair(it, fontAttributes));
         if (!itFontUpdate.second) {
             itFontUpdate.first->second = fontAttributes;
@@ -416,11 +421,11 @@ void updateFonts()
 
         auto it = mapFontUpdates.find(w);
         if (it != mapFontUpdates.end()) {
-            int nSize = std::get<2>(it->second);
+            int nSize = std::get<3>(it->second);
             if (nSize == -1) {
                 nSize = itDefault.first->second;
             }
-            font = getFont(std::get<0>(it->second), std::get<1>(it->second), nSize);
+            font = getFont(std::get<0>(it->second), toQFontWeight(std::get<1>(it->second)), std::get<2>(it->second), nSize);
         } else {
             font.setPointSizeF(getScaledFontSize(itDefault.first->second));
         }
@@ -515,13 +520,9 @@ QFont getFont(FontFamily family, QFont::Weight qWeight, bool fItalic, int nPoint
     return font;
 }
 
-QFont getFont(QFont::Weight qWeight, bool fItalic, int nPointSize)
-{
-    return getFont(fontFamily, qWeight, fItalic, nPointSize);
-}
 QFont getFont(FontWeight weight, bool fItalic, int nPointSize)
 {
-    return getFont(toQFontWeight(weight), fItalic, nPointSize);
+    return getFont(fontFamily, toQFontWeight(weight), fItalic, nPointSize);
 }
 
 QFont getFontNormal()

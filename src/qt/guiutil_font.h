@@ -94,6 +94,7 @@ void setApplicationFont();
     issues loading variations of montserrat in css it also keeps track of the set fonts to update on
     theme changes. */
 void setFont(const std::vector<QWidget*>& vecWidgets, FontWeight weight, int nPointSize = -1, bool fItalic = false);
+void setFont(const std::vector<QWidget*>& vecWidgets, FontFamily family, FontWeight weight, int nPointSize = -1, bool fItalic = false);
 
 /** Update the font of all widgets where a custom font has been set with
     GUIUtil::setFont */
@@ -101,7 +102,6 @@ void updateFonts();
 
 /** Get a properly weighted QFont object with the selected font. */
 QFont getFont(FontFamily family, QFont::Weight qWeight, bool fItalic = false, int nPointSize = -1);
-QFont getFont(QFont::Weight qWeight, bool fItalic = false, int nPointSize = -1);
 QFont getFont(FontWeight weight, bool fItalic = false, int nPointSize = -1);
 
 /** Get the default normal QFont */
