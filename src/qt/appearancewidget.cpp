@@ -28,8 +28,8 @@ AppearanceWidget::AppearanceWidget(QWidget* parent) :
         ui->theme->addItem(entry, QVariant(entry));
     }
 
-    for (const auto& [family, family_name] : GUIUtil::AVAILABLE_FONTS) {
-        ui->fontFamily->addItem(family_name, QVariant(static_cast<int>(family)));
+    for (const auto& [family, family_name, selectable] : GUIUtil::AVAILABLE_FONTS) {
+        if (selectable) ui->fontFamily->addItem(family_name, QVariant(static_cast<int>(family)));
     }
 
     updateWeightSlider();

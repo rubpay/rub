@@ -56,7 +56,7 @@ static const std::map<QFont::Weight, std::pair<std::string, /*can_italic=*/bool>
 
 FontFamily fontFamilyFromString(const QString& strFamily)
 {
-    for (const auto& [family, family_name] : AVAILABLE_FONTS) {
+    for (const auto& [family, family_name, _] : AVAILABLE_FONTS) {
         if (strFamily == family_name) {
             return family;
         }
@@ -260,7 +260,7 @@ bool loadFonts()
         return vecSupported;
     };
 
-    for (const auto& [family, _] : AVAILABLE_FONTS) {
+    for (const auto& [family, _, __] : AVAILABLE_FONTS) {
         mapSupportedWeights.insert(std::make_pair(family, supportedWeights(family)));
     }
 
@@ -293,7 +293,7 @@ bool loadFonts()
         mapDefaultWeights.emplace(family, std::make_pair(normalWeight, boldWeight));
     };
 
-    for (const auto& [family, _] : AVAILABLE_FONTS) {
+    for (const auto& [family, _, __] : AVAILABLE_FONTS) {
         addBestDefaults(family);
     }
 
@@ -488,6 +488,9 @@ QFont getFont(FontFamily family, QFont::Weight qWeight, bool fItalic, int nPoint
             font.setFamily(fontFamilyToString(FontFamily::Montserrat) + QString{" "} + QString::fromStdString(mapMontserrat.at(qWeight).first));
         }
 #endif // Q_OS_MAC
+    } else if (family == FontFamily::RobotoMono) {
+        font.setFamily(fontFamilyToString(FontFamily::RobotoMono));
+        font.setStyleHint(QFont::Monospace);
     } else {
         font.setFamily(osDefaultFont->family());
     }

@@ -18,17 +18,20 @@ namespace GUIUtil {
 enum class FontFamily : size_t {
     SystemDefault,
     Montserrat,
-    MaxVal = Montserrat
+    RobotoMono,
+    MaxVal = RobotoMono
 };
 
 struct FontAvailability {
     FontFamily family;
     QString family_name;
+    bool selectable;
 };
 
-static const std::array<FontAvailability, 2> AVAILABLE_FONTS{{
-    {FontFamily::SystemDefault, QString{"SystemDefault"}},
-    {FontFamily::Montserrat, QString{"Montserrat"}},
+static const std::array<FontAvailability, 3> AVAILABLE_FONTS{{
+    {FontFamily::SystemDefault, QString{"SystemDefault"}, true},
+    {FontFamily::Montserrat, QString{"Montserrat"}, true},
+    {FontFamily::RobotoMono, QString{"Roboto Mono"}, false},
 }};
 
 FontFamily fontFamilyFromString(const QString& strFamily);
