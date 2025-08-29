@@ -9,6 +9,7 @@
 #include <qt/clientmodel.h>
 #include <coins.h>
 #include <qt/guiutil.h>
+#include <qt/guiutil_font.h>
 #include <qt/walletmodel.h>
 
 #include <univalue.h>

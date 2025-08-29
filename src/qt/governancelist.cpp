@@ -17,6 +17,7 @@
 #include <key_io.h>
 #include <qt/clientmodel.h>
 #include <qt/guiutil.h>
+#include <qt/guiutil_font.h>
 #include <qt/optionsmodel.h>
 #include <qt/walletmodel.h>
 #include <script/standard.h>
