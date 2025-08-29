@@ -9,14 +9,22 @@
 #include <QString>
 #include <QWidget>
 
+#include <array>
 #include <cstdint>
+#include <tuple>
 #include <vector>
 
 namespace GUIUtil {
-enum class FontFamily {
+enum class FontFamily : int {
     SystemDefault,
     Montserrat,
+    MaxVal = Montserrat
 };
+
+static const std::array<std::pair<FontFamily, QString>, 2> AVAILABLE_FONTS{{
+    {FontFamily::SystemDefault, QString{"SystemDefault"}},
+    {FontFamily::Montserrat, QString{"Montserrat"}},
+}};
 
 FontFamily fontFamilyFromString(const QString& strFamily);
 QString fontFamilyToString(FontFamily family);

@@ -42,25 +42,18 @@ static std::map<FontFamily, std::vector<QFont::Weight>> mapSupportedWeights;
 
 FontFamily fontFamilyFromString(const QString& strFamily)
 {
-    if (strFamily == "SystemDefault") {
-        return FontFamily::SystemDefault;
-    }
-    if (strFamily == "Montserrat") {
-        return FontFamily::Montserrat;
+    for (const auto& [family, family_str] : AVAILABLE_FONTS) {
+        if (strFamily == family_str) {
+            return family;
+        }
     }
     throw std::invalid_argument(strprintf("Invalid font-family: %s", strFamily.toStdString()));
 }
 
 QString fontFamilyToString(FontFamily family)
 {
-    switch (family) {
-    case FontFamily::SystemDefault:
-        return "SystemDefault";
-    case FontFamily::Montserrat:
-        return "Montserrat";
-    default:
-        assert(false);
-    }
+    assert(family <= FontFamily::MaxVal);
+    return AVAILABLE_FONTS[static_cast<size_t>(family)].second;
 }
 
 FontFamily getFontFamily()
@@ -259,8 +252,9 @@ bool loadFonts()
         return vecSupported;
     };
 
-    mapSupportedWeights.insert(std::make_pair(FontFamily::SystemDefault, supportedWeights(FontFamily::SystemDefault)));
-    mapSupportedWeights.insert(std::make_pair(FontFamily::Montserrat, supportedWeights(FontFamily::Montserrat)));
+    for (const auto& [family, _] : AVAILABLE_FONTS) {
+        mapSupportedWeights.insert(std::make_pair(family, supportedWeights(family)));
+    }
 
     auto getBestMatch = [&](FontFamily fontFamily, QFont::Weight targetWeight) {
         auto& vecSupported = mapSupportedWeights[fontFamily];
@@ -291,8 +285,9 @@ bool loadFonts()
         mapDefaultWeights.emplace(family, std::make_pair(normalWeight, boldWeight));
     };
 
-    addBestDefaults(FontFamily::SystemDefault);
-    addBestDefaults(FontFamily::Montserrat);
+    for (const auto& [family, _] : AVAILABLE_FONTS) {
+        addBestDefaults(family);
+    }
 
     // Load supported defaults. May become overwritten later.
     mapWeights = mapDefaultWeights;
