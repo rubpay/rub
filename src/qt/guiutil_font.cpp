@@ -401,7 +401,7 @@ void updateFonts()
             "QScrollBar", "QListView", "BitcoinGUI", "WalletView", "WalletFrame", "QVBoxLayout", "QGroupBox"
         };
         std::vector<QString> vecIgnoreObjects{
-            "messagesWidget"
+            "embeddedFont_label_1", "embeddedFont_label_9", "messagesWidget", "systemFont_label_1", "systemFont_label_9"
         };
         if (std::find(vecIgnoreClasses.begin(), vecIgnoreClasses.end(), w->metaObject()->className()) != vecIgnoreClasses.end() ||
             std::find(vecIgnoreObjects.begin(), vecIgnoreObjects.end(), w->objectName()) != vecIgnoreObjects.end()) {
