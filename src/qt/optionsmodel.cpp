@@ -261,8 +261,7 @@ bool OptionsModel::Init(bilingual_str& error)
     } else if (GUIUtil::fontsLoaded()) {
         int raw_weight = SettingToInt(node().getPersistentSetting("font-weight-normal"), GUIUtil::weightToArg(GUIUtil::g_font_defaults.weight_normal));
         QFont::Weight weight;
-        GUIUtil::weightFromArg(raw_weight, weight);
-        if (!GUIUtil::isSupportedWeight(weight)) {
+        if (!GUIUtil::weightFromArg(raw_weight, weight) || !GUIUtil::isSupportedWeight(weight)) {
             weight = GUIUtil::supportedWeightFromIndex(GetFallbackWeightIndex(/*is_bold=*/false));
             node().forceSetting("font-weight-normal", GUIUtil::weightToArg(weight));
         }
@@ -274,8 +273,7 @@ bool OptionsModel::Init(bilingual_str& error)
     } else if (GUIUtil::fontsLoaded()) {
         QFont::Weight weight;
         int raw_weight = SettingToInt(node().getPersistentSetting("font-weight-bold"), GUIUtil::weightToArg(GUIUtil::g_font_defaults.weight_bold));
-        GUIUtil::weightFromArg(raw_weight, weight);
-        if (!GUIUtil::isSupportedWeight(weight)) {
+        if (!GUIUtil::weightFromArg(raw_weight, weight) || !GUIUtil::isSupportedWeight(weight)) {
             weight = GUIUtil::supportedWeightFromIndex(GetFallbackWeightIndex(/*is_bold=*/true));
             node().forceSetting("font-weight-bold", GUIUtil::weightToArg(weight));
         }
