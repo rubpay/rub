@@ -834,6 +834,7 @@ bool OptionsModel::setOption(OptionID option, const QVariant& value)
         settings.setValue("fKeepChangeAddress", fKeepChangeAddress);
         Q_EMIT keepChangeAddressChanged(fKeepChangeAddress);
         break;
+#endif // ENABLE_WALLET
     case Prune:
         if (settings.value("bPrune") != value) {
             settings.setValue("bPrune", value);
@@ -846,7 +847,6 @@ bool OptionsModel::setOption(OptionID option, const QVariant& value)
             setRestartRequired(true);
         }
         break;
-#endif // ENABLE_WALLET
     case DatabaseCache:
         if (settings.value("nDatabaseCache") != value) {
             settings.setValue("nDatabaseCache", value);
