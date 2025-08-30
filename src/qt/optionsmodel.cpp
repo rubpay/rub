@@ -69,6 +69,7 @@ static const char* SettingName(OptionsModel::OptionID option)
     case OptionsModel::CoinJoinSessions: return "coinjoinsessions";
     case OptionsModel::FontFamily: return "font-family";
     case OptionsModel::FontScale: return "font-scale";
+    case OptionsModel::FontWeightBold: return "font-weight-bold";
     case OptionsModel::FontWeightNormal: return "font-weight-normal";
     default: throw std::logic_error(strprintf("GUI option %i has no corresponding node setting.", option));
     }
@@ -84,6 +85,7 @@ static bool RequiresNumWorkaround(OptionsModel::OptionID option)
     case OptionsModel::CoinJoinSessions:
     case OptionsModel::DatabaseCache:
     case OptionsModel::FontScale:
+    case OptionsModel::FontWeightBold:
     case OptionsModel::FontWeightNormal:
     case OptionsModel::Prune:
     case OptionsModel::PruneSize:
@@ -149,13 +151,19 @@ struct ProxySetting {
 static ProxySetting ParseProxyString(const std::string& proxy);
 static std::string ProxyString(bool is_set, QString ip, QString port);
 
-static int GetFallbackWeightIndex()
+static int GetFallbackWeightIndex(bool is_bold)
 {
-    // If the currently selected weight is not supported fallback to the lightest weight for normal font.
-    return 0;
+    if (is_bold) {
+        // If the currently selected weight is not supported fallback to the second lightest weight for bold font
+        // or the lightest if there is only one.
+        return GUIUtil::getSupportedWeights().size() > 1 ? 1 : 0;
+    } else {
+        // If the currently selected weight is not supported fallback to the lightest weight for normal font.
+        return 0;
+    }
 }
 
-static int WeightToIndex(int raw_weight)
+static int WeightToIndex(int raw_weight, bool is_bold)
 {
     QFont::Weight weight;
     if (GUIUtil::weightFromArg(raw_weight, weight)) {
@@ -163,7 +171,7 @@ static int WeightToIndex(int raw_weight)
             return index;
         }
     }
-    return GetFallbackWeightIndex();
+    return GetFallbackWeightIndex(is_bold);
 }
 
 OptionsModel::OptionsModel(interfaces::Node& node, QObject *parent) :
@@ -255,29 +263,23 @@ bool OptionsModel::Init(bilingual_str& error)
         QFont::Weight weight;
         GUIUtil::weightFromArg(raw_weight, weight);
         if (!GUIUtil::isSupportedWeight(weight)) {
-            weight = GUIUtil::supportedWeightFromIndex(GetFallbackWeightIndex());
+            weight = GUIUtil::supportedWeightFromIndex(GetFallbackWeightIndex(/*is_bold=*/false));
             node().forceSetting("font-weight-normal", GUIUtil::weightToArg(weight));
         }
         GUIUtil::setFontWeightNormal(weight);
     }
 
-    if (!settings.contains("fontWeightBold"))
-        settings.setValue("fontWeightBold", GUIUtil::weightToArg(GUIUtil::g_font_defaults.weight_bold));
-    if (gArgs.SoftSetArg("-font-weight-bold", settings.value("fontWeightBold").toString().toStdString())) {
-        if (GUIUtil::fontsLoaded()) {
-            QFont::Weight weight;
-            GUIUtil::weightFromArg(settings.value("fontWeightBold").toInt(), weight);
-            if (!GUIUtil::isSupportedWeight(weight)) {
-                // If the currently selected weight is not supported fallback to the second lightest weight for bold font
-                // or the lightest if there is only one.
-                auto vecSupported = GUIUtil::getSupportedWeights();
-                weight = vecSupported[vecSupported.size() > 1 ? 1 : 0];
-                settings.setValue("fontWeightBold", GUIUtil::weightToArg(weight));
-            }
-            GUIUtil::setFontWeightBold(weight);
-        }
-    } else {
+    if (node().isSettingIgnored("font-weight-bold")) {
         addOverriddenOption("-font-weight-bold");
+    } else if (GUIUtil::fontsLoaded()) {
+        QFont::Weight weight;
+        int raw_weight = SettingToInt(node().getPersistentSetting("font-weight-bold"), GUIUtil::weightToArg(GUIUtil::g_font_defaults.weight_bold));
+        GUIUtil::weightFromArg(raw_weight, weight);
+        if (!GUIUtil::isSupportedWeight(weight)) {
+            weight = GUIUtil::supportedWeightFromIndex(GetFallbackWeightIndex(/*is_bold=*/true));
+            node().forceSetting("font-weight-bold", GUIUtil::weightToArg(weight));
+        }
+        GUIUtil::setFontWeightBold(weight);
     }
 
 #ifdef ENABLE_WALLET
@@ -571,14 +573,9 @@ QVariant OptionsModel::getOption(OptionID option) const
     case FontScale:
         return qlonglong(SettingToInt(setting(), GUIUtil::g_font_defaults.scale));
     case FontWeightNormal:
-        return WeightToIndex(SettingToInt(setting(), GUIUtil::g_font_defaults.weight_normal));
-    case FontWeightBold: {
-        QFont::Weight weight;
-        GUIUtil::weightFromArg(settings.value("fontWeightBold").toInt(), weight);
-        int nIndex = GUIUtil::supportedWeightToIndex(weight);
-        assert(nIndex != -1);
-        return nIndex;
-    }
+        return WeightToIndex(SettingToInt(setting(), GUIUtil::g_font_defaults.weight_normal), /*is_bold=*/false);
+    case FontWeightBold:
+        return WeightToIndex(SettingToInt(setting(), GUIUtil::g_font_defaults.weight_bold), /*is_bold=*/true);
     case Language:
         return QString::fromStdString(SettingToString(setting(), ""));
     case UseEmbeddedMonospacedFont:
@@ -817,9 +814,8 @@ bool OptionsModel::setOption(OptionID option, const QVariant& value)
         break;
     }
     case FontWeightBold: {
-        int nWeight = GUIUtil::weightToArg(GUIUtil::supportedWeightFromIndex(value.toInt()));
-        if (settings.value("fontWeightBold") != nWeight) {
-            settings.setValue("fontWeightBold", nWeight);
+        if (changed()) {
+            update(GUIUtil::weightToArg(GUIUtil::supportedWeightFromIndex(value.toInt())));
         }
         break;
     }
@@ -981,8 +977,8 @@ void OptionsModel::checkAndMigrate()
                 ProxySetting parsed = ParseProxyString(value.toString());
                 setOption(ProxyIPTor, parsed.ip);
                 setOption(ProxyPortTor, parsed.port);
-            } else if (option == FontWeightNormal) {
-                setOption(option, WeightToIndex(value.toInt()));
+            } else if (option == FontWeightNormal || option == FontWeightBold) {
+                setOption(option, WeightToIndex(value.toInt(), /*is_bold=*/option == FontWeightBold));
             } else {
                 setOption(option, value);
             }
@@ -1011,6 +1007,7 @@ void OptionsModel::checkAndMigrate()
     if (GUIUtil::fontsLoaded()) {
         migrate_setting(FontFamily, "fontFamily");
         migrate_setting(FontScale, "fontScale");
+        migrate_setting(FontWeightBold, "fontWeightBold");
         migrate_setting(FontWeightNormal, "fontWeightNormal");
     }
 #ifdef ENABLE_WALLET
