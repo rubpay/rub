@@ -14,6 +14,7 @@
 
 #include <assert.h>
 
+struct bilingual_str;
 namespace interfaces {
 class Node;
 }
@@ -42,7 +43,7 @@ class OptionsModel : public QAbstractListModel
     Q_OBJECT
 
 public:
-    explicit OptionsModel(interfaces::Node& node, QObject *parent = nullptr, bool resetSettings = false);
+    explicit OptionsModel(interfaces::Node& node, QObject *parent = nullptr);
 
     enum OptionID {
         StartAtStartup,       // bool
@@ -92,7 +93,7 @@ public:
         OptionIDRowCount,
     };
 
-    void Init(bool resetSettings = false);
+    bool Init(bilingual_str& error);
     void Reset();
 
     int rowCount(const QModelIndex & parent = QModelIndex()) const override;
@@ -118,8 +119,7 @@ public:
     void emitCoinJoinEnabledChanged();
 
     /* Explicit setters */
-    void SetPruneEnabled(bool prune, bool force = false);
-    void SetPruneTargetGB(int prune_target_gb, bool force = false);
+    void SetPruneTargetGB(int prune_target_gb);
 
     /* Restart flag helper */
     void setRestartRequired(bool fRequired);
@@ -142,6 +142,16 @@ private:
     bool m_sub_fee_from_amount;
     bool fKeepChangeAddress;
     bool fShowAdvancedCJUI;
+
+    //! In-memory settings for display. These are stored persistently by the
+    //! bitcoin node but it's also nice to store them in memory to prevent them
+    //! getting cleared when enable/disable toggles are used in the GUI.
+    int m_prune_size_gb;
+    QString m_proxy_ip;
+    QString m_proxy_port;
+    QString m_onion_ip;
+    QString m_onion_port;
+
     /* settings that were overridden by command-line */
     QString strOverriddenByCommandLine;
 
@@ -150,6 +160,7 @@ private:
 
     // Check settings version and upgrade default values if required
     void checkAndMigrate();
+
 Q_SIGNALS:
     void displayUnitChanged(BitcoinUnit unit);
     void coinJoinEnabledChanged();
