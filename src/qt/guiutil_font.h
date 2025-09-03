@@ -21,8 +21,25 @@ enum class FontFamily {
 FontFamily fontFamilyFromString(const QString& strFamily);
 QString fontFamilyToString(FontFamily family);
 
+struct FontSettings {
+    FontFamily family{FontFamily::SystemDefault};
+    int size{12};
+    int scale{0};
+    double scale_steps{0.01};
+    QFont::Weight weight_bold{QFont::Medium};
+    QFont::Weight weight_normal{
+#ifdef Q_OS_MACOS
+        QFont::ExtraLight
+#else
+        QFont::Light
+#endif // Q_OS_MACOS
+    };
+};
+
+/** Font related default values. */
+extern const FontSettings g_font_defaults;
+
 /** set/get font family: GUIUtil::fontFamily */
-FontFamily getFontFamilyDefault();
 FontFamily getFontFamily();
 void setFontFamily(FontFamily family);
 
@@ -39,17 +56,14 @@ int weightToArg(const QFont::Weight weight);
 QFont::Weight toQFontWeight(FontWeight weight);
 
 /** set/get normal font weight: GUIUtil::fontWeightNormal */
-QFont::Weight getFontWeightNormalDefault();
 QFont::Weight getFontWeightNormal();
 void setFontWeightNormal(QFont::Weight weight);
 
 /** set/get bold font weight: GUIUtil::fontWeightBold */
-QFont::Weight getFontWeightBoldDefault();
 QFont::Weight getFontWeightBold();
 void setFontWeightBold(QFont::Weight weight);
 
 /** set/get font scale: GUIUtil::fontScale */
-int getFontScaleDefault();
 int getFontScale();
 void setFontScale(int nScale);
 

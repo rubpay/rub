@@ -98,7 +98,7 @@ void OptionsModel::Init(bool resetSettings)
         settings.setValue("theme", GUIUtil::getDefaultTheme());
 
     if (!settings.contains("fontFamily"))
-        settings.setValue("fontFamily", GUIUtil::fontFamilyToString(GUIUtil::getFontFamilyDefault()));
+        settings.setValue("fontFamily", GUIUtil::fontFamilyToString(GUIUtil::g_font_defaults.family));
     if (gArgs.SoftSetArg("-font-family", settings.value("fontFamily").toString().toStdString())) {
         if (GUIUtil::fontsLoaded()) {
             GUIUtil::setFontFamily(GUIUtil::fontFamilyFromString(settings.value("fontFamily").toString()));
@@ -108,7 +108,7 @@ void OptionsModel::Init(bool resetSettings)
     }
 
     if (!settings.contains("fontScale"))
-        settings.setValue("fontScale", GUIUtil::getFontScaleDefault());
+        settings.setValue("fontScale", GUIUtil::g_font_defaults.scale);
     if (gArgs.SoftSetArg("-font-scale", settings.value("fontScale").toString().toStdString())) {
         if (GUIUtil::fontsLoaded()) {
             GUIUtil::setFontScale(settings.value("fontScale").toInt());
@@ -118,7 +118,7 @@ void OptionsModel::Init(bool resetSettings)
     }
 
     if (!settings.contains("fontWeightNormal"))
-        settings.setValue("fontWeightNormal", GUIUtil::weightToArg(GUIUtil::getFontWeightNormalDefault()));
+        settings.setValue("fontWeightNormal", GUIUtil::weightToArg(GUIUtil::g_font_defaults.weight_normal));
     if (gArgs.SoftSetArg("-font-weight-normal", settings.value("fontWeightNormal").toString().toStdString())) {
         if (GUIUtil::fontsLoaded()) {
             QFont::Weight weight;
@@ -135,7 +135,7 @@ void OptionsModel::Init(bool resetSettings)
     }
 
     if (!settings.contains("fontWeightBold"))
-        settings.setValue("fontWeightBold", GUIUtil::weightToArg(GUIUtil::getFontWeightBoldDefault()));
+        settings.setValue("fontWeightBold", GUIUtil::weightToArg(GUIUtil::g_font_defaults.weight_bold));
     if (gArgs.SoftSetArg("-font-weight-bold", settings.value("fontWeightBold").toString().toStdString())) {
         if (GUIUtil::fontsLoaded()) {
             QFont::Weight weight;
