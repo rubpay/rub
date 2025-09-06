@@ -19,7 +19,8 @@ enum class FontFamily : size_t {
     SystemDefault,
     Montserrat,
     RobotoMono,
-    MaxVal = RobotoMono
+    DefaultMonospace,
+    MaxVal = DefaultMonospace
 };
 
 struct FontAvailability {
@@ -28,10 +29,11 @@ struct FontAvailability {
     bool selectable;
 };
 
-static const std::array<FontAvailability, 3> AVAILABLE_FONTS{{
+static const std::array<FontAvailability, 4> AVAILABLE_FONTS{{
     {FontFamily::SystemDefault, QString{"SystemDefault"}, true},
     {FontFamily::Montserrat, QString{"Montserrat"}, true},
     {FontFamily::RobotoMono, QString{"Roboto Mono"}, false},
+    {FontFamily::DefaultMonospace, QString{"DefaultMonospace"}, false},
 }};
 
 FontFamily fontFamilyFromString(const QString& strFamily);
