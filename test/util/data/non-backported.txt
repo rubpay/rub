@@ -25,6 +25,7 @@ src/masternode/*.h
 src/messagesigner.*
 src/netfulfilledman.*
 src/qt/governancelist.*
+src/qt/guiutil_font.*
 src/qt/masternodelist.*
 src/qt/proposalwizard.*
 src/rpc/coinjoin.cpp
