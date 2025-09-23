@@ -12,6 +12,7 @@
 #include <qt/bitcoinunits.h>
 #include <qt/guiconstants.h>
 #include <qt/guiutil.h>
+#include <qt/guiutil_font.h>
 
 #include <interfaces/node.h>
 #include <mapport.h>
@@ -97,7 +98,7 @@ void OptionsModel::Init(bool resetSettings)
         settings.setValue("theme", GUIUtil::getDefaultTheme());
 
     if (!settings.contains("fontFamily"))
-        settings.setValue("fontFamily", GUIUtil::fontFamilyToString(GUIUtil::getFontFamilyDefault()));
+        settings.setValue("fontFamily", GUIUtil::fontFamilyToString(GUIUtil::g_font_defaults.family));
     if (gArgs.SoftSetArg("-font-family", settings.value("fontFamily").toString().toStdString())) {
         if (GUIUtil::fontsLoaded()) {
             GUIUtil::setFontFamily(GUIUtil::fontFamilyFromString(settings.value("fontFamily").toString()));
@@ -107,7 +108,7 @@ void OptionsModel::Init(bool resetSettings)
     }
 
     if (!settings.contains("fontScale"))
-        settings.setValue("fontScale", GUIUtil::getFontScaleDefault());
+        settings.setValue("fontScale", GUIUtil::g_font_defaults.scale);
     if (gArgs.SoftSetArg("-font-scale", settings.value("fontScale").toString().toStdString())) {
         if (GUIUtil::fontsLoaded()) {
             GUIUtil::setFontScale(settings.value("fontScale").toInt());
@@ -117,7 +118,7 @@ void OptionsModel::Init(bool resetSettings)
     }
 
     if (!settings.contains("fontWeightNormal"))
-        settings.setValue("fontWeightNormal", GUIUtil::weightToArg(GUIUtil::getFontWeightNormalDefault()));
+        settings.setValue("fontWeightNormal", GUIUtil::weightToArg(GUIUtil::g_font_defaults.weight_normal));
     if (gArgs.SoftSetArg("-font-weight-normal", settings.value("fontWeightNormal").toString().toStdString())) {
         if (GUIUtil::fontsLoaded()) {
             QFont::Weight weight;
@@ -134,7 +135,7 @@ void OptionsModel::Init(bool resetSettings)
     }
 
     if (!settings.contains("fontWeightBold"))
-        settings.setValue("fontWeightBold", GUIUtil::weightToArg(GUIUtil::getFontWeightBoldDefault()));
+        settings.setValue("fontWeightBold", GUIUtil::weightToArg(GUIUtil::g_font_defaults.weight_bold));
     if (gArgs.SoftSetArg("-font-weight-bold", settings.value("fontWeightBold").toString().toStdString())) {
         if (GUIUtil::fontsLoaded()) {
             QFont::Weight weight;
@@ -327,6 +328,12 @@ void OptionsModel::Init(bool resetSettings)
         addOverriddenOption("-lang");
 
     language = settings.value("language").toString();
+
+    if (!settings.contains("UseEmbeddedMonospacedFont")) {
+        settings.setValue("UseEmbeddedMonospacedFont", "true");
+    }
+    m_use_embedded_monospaced_font = settings.value("UseEmbeddedMonospacedFont").toBool();
+    Q_EMIT useEmbeddedMonospacedFontChanged(m_use_embedded_monospaced_font);
 }
 
 /** Helper function to copy contents from one QSettings to another.
@@ -536,6 +543,9 @@ QVariant OptionsModel::data(const QModelIndex & index, int role) const
             QFont::Weight weight;
             GUIUtil::weightFromArg(settings.value("fontWeightNormal").toInt(), weight);
             int nIndex = GUIUtil::supportedWeightToIndex(weight);
+            if (nIndex == -1) {
+                nIndex = GUIUtil::supportedWeightToIndex(GUIUtil::getSupportedFontWeightNormalDefault());
+            }
             assert(nIndex != -1);
             return nIndex;
         }
@@ -543,11 +553,16 @@ QVariant OptionsModel::data(const QModelIndex & index, int role) const
             QFont::Weight weight;
             GUIUtil::weightFromArg(settings.value("fontWeightBold").toInt(), weight);
             int nIndex = GUIUtil::supportedWeightToIndex(weight);
+            if (nIndex == -1) {
+                nIndex = GUIUtil::supportedWeightToIndex(GUIUtil::getSupportedFontWeightBoldDefault());
+            }
             assert(nIndex != -1);
             return nIndex;
         }
         case Language:
             return settings.value("language");
+        case UseEmbeddedMonospacedFont:
+            return m_use_embedded_monospaced_font;
 #ifdef ENABLE_WALLET
         case CoinControlFeatures:
             return fCoinControlFeatures;
@@ -793,6 +808,11 @@ bool OptionsModel::setData(const QModelIndex & index, const QVariant & value, in
                 settings.setValue("language", value);
                 setRestartRequired(true);
             }
+            break;
+        case UseEmbeddedMonospacedFont:
+            m_use_embedded_monospaced_font = value.toBool();
+            settings.setValue("UseEmbeddedMonospacedFont", m_use_embedded_monospaced_font);
+            Q_EMIT useEmbeddedMonospacedFontChanged(m_use_embedded_monospaced_font);
             break;
 #ifdef ENABLE_WALLET
         case CoinControlFeatures:

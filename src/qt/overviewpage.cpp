@@ -9,6 +9,7 @@
 #include <qt/bitcoinunits.h>
 #include <qt/clientmodel.h>
 #include <qt/guiutil.h>
+#include <qt/guiutil_font.h>
 #include <qt/optionsmodel.h>
 #include <qt/transactionfilterproxy.h>
 #include <qt/transactionoverviewwidget.h>
@@ -166,7 +167,8 @@ OverviewPage::OverviewPage(QWidget* parent) :
                       ui->labelSpendable
                      }, GUIUtil::FontWeight::Bold);
 
-    GUIUtil::updateFonts();
+    // Calls GUIUtil::updateFonts() internally
+    setMonospacedFont(false);
 
     m_balances.balance = -1;
 
@@ -300,6 +302,8 @@ void OverviewPage::setClientModel(ClientModel *model)
         // Show warning, for example if this is a prerelease version
         connect(model, &ClientModel::alertsChanged, this, &OverviewPage::updateAlerts);
         updateAlerts(model->getStatusBarWarnings());
+        connect(model->getOptionsModel(), &OptionsModel::useEmbeddedMonospacedFontChanged, this, &OverviewPage::setMonospacedFont);
+        setMonospacedFont(model->getOptionsModel()->getUseEmbeddedMonospacedFont());
         // explicitly update CoinJoin frame and transaction list to reflect actual settings
         updateAdvancedCJUI(model->getOptionsModel()->getShowAdvancedCJUI());
     }
@@ -370,6 +374,25 @@ void OverviewPage::showOutOfSyncWarning(bool fShow)
     ui->labelWalletStatus->setVisible(fShow);
     ui->labelCoinJoinSyncStatus->setVisible(fShow);
     ui->labelTransactionsStatus->setVisible(fShow);
+}
+
+void OverviewPage::setMonospacedFont(bool use_embedded_font)
+{
+    GUIUtil::setFont({
+        ui->labelAmountRounds,
+        ui->labelAnonymized,
+        ui->labelBalance,
+        ui->labelUnconfirmed,
+        ui->labelImmature,
+        ui->labelSubmittedDenom,
+        ui->labelTotal,
+        ui->labelWatchAvailable,
+        ui->labelWatchPending,
+        ui->labelWatchImmature,
+        ui->labelWatchTotal
+    }, use_embedded_font ? GUIUtil::FontFamily::RobotoMono : GUIUtil::FontFamily::DefaultMonospace, GUIUtil::FontWeight::Bold);
+
+    GUIUtil::updateFonts();
 }
 
 void OverviewPage::updateCoinJoinProgress()

@@ -66,6 +66,7 @@ public:
         FontWeightNormal,     // int
         FontWeightBold,       // int
         Language,             // QString
+        UseEmbeddedMonospacedFont, // bool
         CoinControlFeatures,  // bool
         SubFeeFromAmount,     // bool
         KeepChangeAddress,    // bool
@@ -106,6 +107,7 @@ public:
     bool getMinimizeOnClose() const { return fMinimizeOnClose; }
     BitcoinUnit getDisplayUnit() const { return m_display_bitcoin_unit; }
     QString getThirdPartyTxUrls() const { return strThirdPartyTxUrls; }
+    bool getUseEmbeddedMonospacedFont() const { return m_use_embedded_monospaced_font; }
     bool getCoinControlFeatures() const { return fCoinControlFeatures; }
     bool getSubFeeFromAmount() const { return m_sub_fee_from_amount; }
     bool getKeepChangeAddress() const { return fKeepChangeAddress; }
@@ -134,6 +136,7 @@ private:
     QString language;
     BitcoinUnit m_display_bitcoin_unit;
     QString strThirdPartyTxUrls;
+    bool m_use_embedded_monospaced_font;
     bool fCoinControlFeatures;
     bool m_sub_fee_from_amount;
     bool fKeepChangeAddress;
@@ -155,6 +158,7 @@ Q_SIGNALS:
     void coinControlFeaturesChanged(bool);
     void keepChangeAddressChanged(bool);
     void showTrayIconChanged(bool);
+    void useEmbeddedMonospacedFontChanged(bool);
 };
 
 #endif // BITCOIN_QT_OPTIONSMODEL_H
