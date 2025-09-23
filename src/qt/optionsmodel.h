@@ -14,6 +14,7 @@
 
 #include <assert.h>
 
+struct bilingual_str;
 namespace interfaces {
 class Node;
 }
@@ -42,7 +43,7 @@ class OptionsModel : public QAbstractListModel
     Q_OBJECT
 
 public:
-    explicit OptionsModel(QObject *parent = nullptr, bool resetSettings = false);
+    explicit OptionsModel(interfaces::Node& node, QObject *parent = nullptr);
 
     enum OptionID {
         StartAtStartup,       // bool
@@ -66,6 +67,7 @@ public:
         FontWeightNormal,     // int
         FontWeightBold,       // int
         Language,             // QString
+        UseEmbeddedMonospacedFont, // bool
         CoinControlFeatures,  // bool
         SubFeeFromAmount,     // bool
         KeepChangeAddress,    // bool
@@ -88,15 +90,18 @@ public:
         CoinJoinMultiSession, // bool
         Listen,               // bool
         Server,               // bool
+        MaskValues,           // bool
         OptionIDRowCount,
     };
 
-    void Init(bool resetSettings = false);
+    bool Init(bilingual_str& error);
     void Reset();
 
     int rowCount(const QModelIndex & parent = QModelIndex()) const override;
     QVariant data(const QModelIndex & index, int role = Qt::DisplayRole) const override;
     bool setData(const QModelIndex & index, const QVariant & value, int role = Qt::EditRole) override;
+    QVariant getOption(OptionID option, const std::string& suffix="") const;
+    bool setOption(OptionID option, const QVariant& value, const std::string& suffix="");
     /** Updates current unit in memory, settings and emits displayUnitChanged(new_unit) signal */
     void setDisplayUnit(const QVariant& new_unit);
 
@@ -106,6 +111,7 @@ public:
     bool getMinimizeOnClose() const { return fMinimizeOnClose; }
     BitcoinUnit getDisplayUnit() const { return m_display_bitcoin_unit; }
     QString getThirdPartyTxUrls() const { return strThirdPartyTxUrls; }
+    bool getUseEmbeddedMonospacedFont() const { return m_use_embedded_monospaced_font; }
     bool getCoinControlFeatures() const { return fCoinControlFeatures; }
     bool getSubFeeFromAmount() const { return m_sub_fee_from_amount; }
     bool getKeepChangeAddress() const { return fKeepChangeAddress; }
@@ -114,19 +120,17 @@ public:
     void emitCoinJoinEnabledChanged();
 
     /* Explicit setters */
-    void SetPruneEnabled(bool prune, bool force = false);
-    void SetPruneTargetGB(int prune_target_gb, bool force = false);
+    void SetPruneTargetGB(int prune_target_gb);
 
     /* Restart flag helper */
     void setRestartRequired(bool fRequired);
     bool isRestartRequired() const;
     bool resetSettingsOnShutdown{false};
 
-    interfaces::Node& node() const { assert(m_node); return *m_node; }
-    void setNode(interfaces::Node& node) { assert(!m_node); m_node = &node; }
+    interfaces::Node& node() const { return m_node; }
 
 private:
-    interfaces::Node* m_node = nullptr;
+    interfaces::Node& m_node;
     /* Qt-only settings */
     bool m_show_tray_icon;
     bool fMinimizeToTray;
@@ -134,10 +138,13 @@ private:
     QString language;
     BitcoinUnit m_display_bitcoin_unit;
     QString strThirdPartyTxUrls;
+    bool m_use_embedded_monospaced_font;
     bool fCoinControlFeatures;
     bool m_sub_fee_from_amount;
+    bool m_mask_values;
     bool fKeepChangeAddress;
     bool fShowAdvancedCJUI;
+
     /* settings that were overridden by command-line */
     QString strOverriddenByCommandLine;
 
@@ -146,6 +153,7 @@ private:
 
     // Check settings version and upgrade default values if required
     void checkAndMigrate();
+
 Q_SIGNALS:
     void displayUnitChanged(BitcoinUnit unit);
     void coinJoinEnabledChanged();
@@ -155,6 +163,7 @@ Q_SIGNALS:
     void coinControlFeaturesChanged(bool);
     void keepChangeAddressChanged(bool);
     void showTrayIconChanged(bool);
+    void useEmbeddedMonospacedFontChanged(bool);
 };
 
 #endif // BITCOIN_QT_OPTIONSMODEL_H

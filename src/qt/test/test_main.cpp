@@ -60,9 +60,10 @@ int main(int argc, char* argv[])
     // regtest params.
     //
     // All tests must use their own testing setup (if needed).
-    {
+    fs::create_directories([] {
         BasicTestingSetup dummy{CBaseChainParams::REGTEST};
-    }
+        return gArgs.GetDataDirNet() / "blocks";
+    }());
 
     NodeContext node_context;
     int unused_exit_status;
