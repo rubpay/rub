@@ -141,6 +141,40 @@ std::vector<uint256> CMasternodeMetaMan::GetAndClearDirtyGovernanceObjectHashes(
     return vecTmp;
 }
 
+void CMasternodeMetaMan::SetLastOutboundAttempt(const uint256& protx_hash, int64_t t)
+{
+    LOCK(cs);
+
+    auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) {
+        it = metaInfos.emplace(protx_hash, std::make_shared<CMasternodeMetaInfo>(protx_hash)).first;
+    }
+
+    return it->second->SetLastOutboundAttempt(t);
+}
+
+void CMasternodeMetaMan::SetLastOutboundSuccess(const uint256& protx_hash, int64_t t)
+{
+    LOCK(cs);
+
+    auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) {
+        it = metaInfos.emplace(protx_hash, std::make_shared<CMasternodeMetaInfo>(protx_hash)).first;
+    }
+
+    return it->second->SetLastOutboundSuccess(t);
+}
+
+int64_t CMasternodeMetaMan::GetLastOutboundAttempt(const uint256& protx_hash) const
+{
+    LOCK(cs);
+
+    auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) return 0;
+
+    return it->second->GetLastOutboundAttempt();
+}
+
 int64_t CMasternodeMetaMan::GetLastOutboundSuccess(const uint256& protx_hash) const
 {
     LOCK(cs);
