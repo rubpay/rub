@@ -125,11 +125,10 @@ bool CMasternodeMetaMan::IsValidForMixingTxes(const uint256& protx_hash) const
     return GetMetaInfoOrDefault(protx_hash).m_mixing_tx_count <= MASTERNODE_MAX_MIXING_TXES;
 }
 
-bool CMasternodeMetaMan::AddGovernanceVote(const uint256& proTxHash, const uint256& nGovernanceObjectHash)
+void CMasternodeMetaMan::AddGovernanceVote(const uint256& proTxHash, const uint256& nGovernanceObjectHash)
 {
     LOCK(cs);
     GetMetaInfo(proTxHash).AddGovernanceVote(nGovernanceObjectHash);
-    return true;
 }
 
 void CMasternodeMetaMan::RemoveGovernanceObject(const uint256& nGovernanceObjectHash)

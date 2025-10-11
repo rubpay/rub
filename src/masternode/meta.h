@@ -209,7 +209,7 @@ public:
     void DisallowMixing(const uint256& proTxHash);
     bool IsValidForMixingTxes(const uint256& protx_hash) const EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
-    bool AddGovernanceVote(const uint256& proTxHash, const uint256& nGovernanceObjectHash);
+    void AddGovernanceVote(const uint256& proTxHash, const uint256& nGovernanceObjectHash);
     void RemoveGovernanceObject(const uint256& nGovernanceObjectHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
     std::vector<uint256> GetAndClearDirtyGovernanceObjectHashes() EXCLUSIVE_LOCKS_REQUIRED(!cs);
