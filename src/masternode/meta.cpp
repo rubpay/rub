@@ -141,6 +141,26 @@ std::vector<uint256> CMasternodeMetaMan::GetAndClearDirtyGovernanceObjectHashes(
     return vecTmp;
 }
 
+bool CMasternodeMetaMan::OutboundFailedTooManyTimes(const uint256& protx_hash) const
+{
+    LOCK(cs);
+
+    auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) return false;
+
+    return it->second->OutboundFailedTooManyTimes();
+}
+
+bool CMasternodeMetaMan::IsPlatformBanned(const uint256& protx_hash) const
+{
+    LOCK(cs);
+
+    auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) return false;
+
+    return it->second->IsPlatformBanned();
+}
+
 bool CMasternodeMetaMan::ResetPlatformBan(const uint256& protx_hash, int height)
 {
     LOCK(cs);
