@@ -23,19 +23,16 @@ class UniValue;
 template<typename T>
 class CFlatDB;
 
-static constexpr int MASTERNODE_MAX_MIXING_TXES{5};
-static constexpr int MASTERNODE_MAX_FAILED_OUTBOUND_ATTEMPTS{5};
-
 // Holds extra (non-deterministic) information about masternodes
 // This is mostly local information, e.g. about mixing and governance
 class CMasternodeMetaInfo
 {
 public:
-    uint256 proTxHash;
+    uint256 m_protx_hash;
 
     //the dsq count from the last dsq broadcast of this node
-    int64_t nLastDsq{0};
-    int nMixingTxCount{0};
+    int64_t m_last_dsq{0};
+    int m_mixing_tx_count{0};
 
     // KEEP TRACK OF GOVERNANCE ITEMS EACH MASTERNODE HAS VOTE UPON FOR RECALCULATION
     std::map<uint256, int> mapGovernanceObjectsVotedOn;
@@ -51,12 +48,15 @@ public:
 
 public:
     CMasternodeMetaInfo() = default;
-    explicit CMasternodeMetaInfo(const uint256& _proTxHash) : proTxHash(_proTxHash) {}
+    explicit CMasternodeMetaInfo(const uint256& protx_hash) :
+        m_protx_hash(protx_hash)
+    {
+    }
     CMasternodeMetaInfo(const CMasternodeMetaInfo& ref) = default;
 
     SERIALIZE_METHODS(CMasternodeMetaInfo, obj)
     {
-        READWRITE(obj.proTxHash, obj.nLastDsq, obj.nMixingTxCount, obj.mapGovernanceObjectsVotedOn,
+        READWRITE(obj.m_protx_hash, obj.m_last_dsq, obj.m_mixing_tx_count, obj.mapGovernanceObjectsVotedOn,
                   obj.outboundAttemptCount, obj.lastOutboundAttempt, obj.lastOutboundSuccess, obj.m_platform_ban,
                   obj.m_platform_ban_updated);
     }
@@ -64,25 +64,13 @@ public:
     UniValue ToJson() const EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
 public:
-    const uint256 GetProTxHash() const EXCLUSIVE_LOCKS_REQUIRED(!cs)
-    {
-        return proTxHash;
-    }
-    int64_t GetLastDsq() const { return nLastDsq; }
-    int GetMixingTxCount() const { return nMixingTxCount; }
-
-    bool IsValidForMixingTxes() const { return GetMixingTxCount() <= MASTERNODE_MAX_MIXING_TXES; }
-
     // KEEP TRACK OF EACH GOVERNANCE ITEM IN CASE THIS NODE GOES OFFLINE, SO WE CAN RECALCULATE THEIR STATUS
     void AddGovernanceVote(const uint256& nGovernanceObjectHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
     void RemoveGovernanceObject(const uint256& nGovernanceObjectHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
-    bool OutboundFailedTooManyTimes() const { return outboundAttemptCount > MASTERNODE_MAX_FAILED_OUTBOUND_ATTEMPTS; }
     void SetLastOutboundAttempt(int64_t t) { lastOutboundAttempt = t; ++outboundAttemptCount; }
-    int64_t GetLastOutboundAttempt() const { return lastOutboundAttempt; }
     void SetLastOutboundSuccess(int64_t t) { lastOutboundSuccess = t; outboundAttemptCount = 0; }
-    int64_t GetLastOutboundSuccess() const { return lastOutboundSuccess; }
     bool SetPlatformBan(bool is_banned, int height) EXCLUSIVE_LOCKS_REQUIRED(!cs)
     {
         if (height < m_platform_ban_updated) {
@@ -94,10 +82,6 @@ public:
         m_platform_ban = is_banned;
         m_platform_ban_updated = height;
         return true;
-    }
-    bool IsPlatformBanned() const EXCLUSIVE_LOCKS_REQUIRED(!cs)
-    {
-        return m_platform_ban;
     }
 };
 
@@ -137,7 +121,7 @@ public:
         std::vector<CMasternodeMetaInfo> tmpMetaInfo;
         s >> tmpMetaInfo >> nDsqCount;
         for (auto& mm : tmpMetaInfo) {
-            metaInfos.emplace(mm.GetProTxHash(), CMasternodeMetaInfo{std::move(mm)});
+            metaInfos.emplace(mm.m_protx_hash, CMasternodeMetaInfo{std::move(mm)});
         }
     }
 

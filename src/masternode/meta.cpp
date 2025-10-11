@@ -10,6 +10,9 @@
 
 const std::string MasternodeMetaStore::SERIALIZATION_VERSION_STRING = "CMasternodeMetaMan-Version-4";
 
+static constexpr int MASTERNODE_MAX_FAILED_OUTBOUND_ATTEMPTS{5};
+static constexpr int MASTERNODE_MAX_MIXING_TXES{5};
+
 CMasternodeMetaMan::CMasternodeMetaMan() :
     m_db{std::make_unique<db_type>("mncache.dat", "magicMasternodeCache")}
 {
@@ -33,8 +36,8 @@ UniValue CMasternodeMetaInfo::ToJson() const
     int64_t now = GetTime<std::chrono::seconds>().count();
 
     UniValue ret(UniValue::VOBJ);
-    ret.pushKV("lastDSQ", nLastDsq);
-    ret.pushKV("mixingTxCount", nMixingTxCount);
+    ret.pushKV("lastDSQ", m_last_dsq);
+    ret.pushKV("mixingTxCount", m_mixing_tx_count);
     ret.pushKV("outboundAttemptCount", outboundAttemptCount);
     ret.pushKV("lastOutboundAttempt", lastOutboundAttempt);
     ret.pushKV("lastOutboundAttemptElapsed", now - lastOutboundAttempt);
@@ -87,7 +90,7 @@ bool CMasternodeMetaMan::IsDsqOver(const uint256& protx_hash, int mn_count) cons
         return false;
     }
     const auto& meta_info = it->second;
-    int64_t last_dsq = meta_info.GetLastDsq();
+    int64_t last_dsq = meta_info.m_last_dsq;
     int64_t threshold = last_dsq + mn_count / 5;
 
     LogPrint(BCLog::COINJOIN, "DSQUEUE -- mn: %s last_dsq: %d  dsq_threshold: %d  nDsqCount: %d\n",
@@ -100,15 +103,15 @@ void CMasternodeMetaMan::AllowMixing(const uint256& proTxHash)
     LOCK(cs);
     auto& mm = GetMetaInfo(proTxHash);
     nDsqCount++;
-    mm.nLastDsq = nDsqCount.load();
-    mm.nMixingTxCount = 0;
+    mm.m_last_dsq = nDsqCount.load();
+    mm.m_mixing_tx_count = 0;
 }
 
 void CMasternodeMetaMan::DisallowMixing(const uint256& proTxHash)
 {
     LOCK(cs);
     auto& mm = GetMetaInfo(proTxHash);
-    mm.nMixingTxCount++;
+    mm.m_mixing_tx_count++;
 }
 
 bool CMasternodeMetaMan::IsValidForMixingTxes(const uint256& protx_hash) const
@@ -118,7 +121,7 @@ bool CMasternodeMetaMan::IsValidForMixingTxes(const uint256& protx_hash) const
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return true;
 
-    return it->second.IsValidForMixingTxes();
+    return it->second.m_mixing_tx_count <= MASTERNODE_MAX_MIXING_TXES;
 }
 
 bool CMasternodeMetaMan::AddGovernanceVote(const uint256& proTxHash, const uint256& nGovernanceObjectHash)
@@ -175,7 +178,7 @@ int64_t CMasternodeMetaMan::GetLastOutboundAttempt(const uint256& protx_hash) co
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return 0;
 
-    return it->second.GetLastOutboundAttempt();
+    return it->second.lastOutboundAttempt;
 }
 
 int64_t CMasternodeMetaMan::GetLastOutboundSuccess(const uint256& protx_hash) const
@@ -185,7 +188,7 @@ int64_t CMasternodeMetaMan::GetLastOutboundSuccess(const uint256& protx_hash) co
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return 0;
 
-    return it->second.GetLastOutboundSuccess();
+    return it->second.lastOutboundSuccess;
 }
 
 bool CMasternodeMetaMan::OutboundFailedTooManyTimes(const uint256& protx_hash) const
@@ -195,7 +198,7 @@ bool CMasternodeMetaMan::OutboundFailedTooManyTimes(const uint256& protx_hash) c
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return false;
 
-    return it->second.OutboundFailedTooManyTimes();
+    return it->second.outboundAttemptCount > MASTERNODE_MAX_FAILED_OUTBOUND_ATTEMPTS;
 }
 
 bool CMasternodeMetaMan::IsPlatformBanned(const uint256& protx_hash) const
@@ -205,7 +208,7 @@ bool CMasternodeMetaMan::IsPlatformBanned(const uint256& protx_hash) const
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return false;
 
-    return it->second.IsPlatformBanned();
+    return it->second.m_platform_ban;
 }
 
 bool CMasternodeMetaMan::ResetPlatformBan(const uint256& protx_hash, int height)
