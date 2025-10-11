@@ -119,6 +119,16 @@ void CMasternodeMetaMan::DisallowMixing(const uint256& proTxHash)
     mm->nMixingTxCount++;
 }
 
+bool CMasternodeMetaMan::IsValidForMixingTxes(const uint256& protx_hash) const
+{
+    LOCK(cs);
+
+    auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) return true;
+
+    return it->second->IsValidForMixingTxes();
+}
+
 bool CMasternodeMetaMan::AddGovernanceVote(const uint256& proTxHash, const uint256& nGovernanceObjectHash)
 {
     auto mm = GetMetaInfo(proTxHash);
@@ -215,6 +225,24 @@ bool CMasternodeMetaMan::ResetPlatformBan(const uint256& protx_hash, int height)
     return it->second->SetPlatformBan(false, height);
 }
 
+bool CMasternodeMetaMan::SetPlatformBan(const uint256& inv_hash, PlatformBanMessage&& ban_msg)
+{
+    LOCK(cs);
+
+    const uint256& protx_hash = ban_msg.m_protx_hash;
+
+    auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) {
+        it = metaInfos.emplace(protx_hash, std::make_shared<CMasternodeMetaInfo>(protx_hash)).first;
+    }
+
+    bool ret = it->second->SetPlatformBan(true, ban_msg.m_requested_height);
+    if (ret) {
+        m_seen_platform_bans.insert(inv_hash, std::move(ban_msg));
+    }
+    return ret;
+}
+
 bool CMasternodeMetaMan::AlreadyHavePlatformBan(const uint256& inv_hash) const
 {
     LOCK(cs);
@@ -230,12 +258,6 @@ std::optional<PlatformBanMessage> CMasternodeMetaMan::GetPlatformBan(const uint2
     }
 
     return ret;
-}
-
-void CMasternodeMetaMan::RememberPlatformBan(const uint256& inv_hash, PlatformBanMessage&& msg)
-{
-    LOCK(cs);
-    m_seen_platform_bans.insert(inv_hash, std::move(msg));
 }
 
 std::string MasternodeMetaStore::ToString() const
