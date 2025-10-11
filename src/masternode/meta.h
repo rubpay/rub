@@ -244,8 +244,11 @@ public:
     CMasternodeMetaInfo GetInfo(const uint256& proTxHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
     CMasternodeMetaInfoPtr GetMetaInfo(const uint256& proTxHash, bool fCreate = true) EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
-    int64_t GetDsqCount() const { return nDsqCount; }
-    int64_t GetDsqThreshold(const uint256& proTxHash, int nMnCount);
+    // We keep track of dsq (mixing queues) count to avoid using same masternodes for mixing too often.
+    // MN's threshold is calculated as the last dsq count this specific masternode was used in a mixing
+    // session plus a margin of 20% of masternode count. In other words we expect at least 20% of unique
+    // masternodes before we ever see a masternode that we know already mixed someone's funds earlier.
+    bool IsDsqOver(const uint256& protx_hash, int mn_count) const EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
     void AllowMixing(const uint256& proTxHash);
     void DisallowMixing(const uint256& proTxHash);
