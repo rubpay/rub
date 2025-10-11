@@ -13,6 +13,10 @@ const std::string MasternodeMetaStore::SERIALIZATION_VERSION_STRING = "CMasterno
 static constexpr int MASTERNODE_MAX_FAILED_OUTBOUND_ATTEMPTS{5};
 static constexpr int MASTERNODE_MAX_MIXING_TXES{5};
 
+namespace {
+static const CMasternodeMetaInfo default_meta_info_meta_info{};
+} // anonymous namespace
+
 CMasternodeMetaMan::CMasternodeMetaMan() :
     m_db{std::make_unique<db_type>("mncache.dat", "magicMasternodeCache")}
 {
@@ -63,13 +67,14 @@ void CMasternodeMetaInfo::RemoveGovernanceObject(const uint256& nGovernanceObjec
     mapGovernanceObjectsVotedOn.erase(nGovernanceObjectHash);
 }
 
-CMasternodeMetaInfo CMasternodeMetaMan::GetInfo(const uint256& proTxHash)
+const CMasternodeMetaInfo& CMasternodeMetaMan::GetMetaInfoOrDefault(const uint256& protx_hash) const
 {
-    auto it = metaInfos.find(proTxHash);
-    if (it == metaInfos.end()) return CMasternodeMetaInfo{};
-
+    const auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) return default_meta_info_meta_info;
     return it->second;
 }
+
+CMasternodeMetaInfo CMasternodeMetaMan::GetInfo(const uint256& proTxHash) { return GetMetaInfoOrDefault(proTxHash); }
 
 CMasternodeMetaInfo& CMasternodeMetaMan::GetMetaInfo(const uint256& proTxHash)
 {
@@ -151,24 +156,14 @@ void CMasternodeMetaMan::SetLastOutboundAttempt(const uint256& protx_hash, int64
 {
     LOCK(cs);
 
-    auto it = metaInfos.find(protx_hash);
-    if (it == metaInfos.end()) {
-        it = metaInfos.emplace(protx_hash, CMasternodeMetaInfo{protx_hash}).first;
-    }
-
-    return it->second.SetLastOutboundAttempt(t);
+    GetMetaInfo(protx_hash).SetLastOutboundAttempt(t);
 }
 
 void CMasternodeMetaMan::SetLastOutboundSuccess(const uint256& protx_hash, int64_t t)
 {
     LOCK(cs);
 
-    auto it = metaInfos.find(protx_hash);
-    if (it == metaInfos.end()) {
-        it = metaInfos.emplace(protx_hash, CMasternodeMetaInfo{protx_hash}).first;
-    }
-
-    return it->second.SetLastOutboundSuccess(t);
+    GetMetaInfo(protx_hash).SetLastOutboundSuccess(t);
 }
 
 int64_t CMasternodeMetaMan::GetLastOutboundAttempt(const uint256& protx_hash) const
@@ -227,12 +222,7 @@ bool CMasternodeMetaMan::SetPlatformBan(const uint256& inv_hash, PlatformBanMess
 
     const uint256& protx_hash = ban_msg.m_protx_hash;
 
-    auto it = metaInfos.find(protx_hash);
-    if (it == metaInfos.end()) {
-        it = metaInfos.emplace(protx_hash, CMasternodeMetaInfo{protx_hash}).first;
-    }
-
-    bool ret = it->second.SetPlatformBan(true, ban_msg.m_requested_height);
+    bool ret = GetMetaInfo(protx_hash).SetPlatformBan(true, ban_msg.m_requested_height);
     if (ret) {
         m_seen_platform_bans.insert(inv_hash, std::move(ban_msg));
     }
