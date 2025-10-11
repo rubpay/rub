@@ -18,11 +18,13 @@
 #include <init.h>
 #include <init/common.h>
 #include <interfaces/chain.h>
+#include <mempool_args.h>
 #include <net.h>
 #include <net_processing.h>
 #include <noui.h>
 #include <node/blockstorage.h>
 #include <node/chainstate.h>
+#include <node/context.h>
 #include <node/miner.h>
 #include <policy/fees.h>
 #include <pow.h>
@@ -36,6 +38,7 @@
 #include <test/util/index.h>
 #include <test/util/net.h>
 #include <txdb.h>
+#include <txmempool.h>
 #include <util/strencodings.h>
 #include <util/string.h>
 #include <util/thread.h>
@@ -80,6 +83,8 @@
 
 using node::BlockAssembler;
 using node::CalculateCacheSizes;
+using node::fPruneMode;
+using node::fReindex;
 using node::DashChainstateSetup;
 using node::DashChainstateSetupClose;
 using node::DEFAULT_ADDRESSINDEX;
@@ -88,8 +93,6 @@ using node::DEFAULT_TIMESTAMPINDEX;
 using node::LoadChainstate;
 using node::NodeContext;
 using node::VerifyLoadedChainstate;
-using node::fPruneMode;
-using node::fReindex;
 
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 UrlDecodeFn* const URL_DECODE = nullptr;
@@ -239,6 +242,18 @@ BasicTestingSetup::~BasicTestingSetup()
     gArgs.ClearArgs();
 }
 
+CTxMemPool::Options MemPoolOptionsForTest(const NodeContext& node)
+{
+    CTxMemPool::Options mempool_opts{
+        .estimator = node.fee_estimator.get(),
+        // Default to always checking mempool regardless of
+        // chainparams.DefaultConsistencyChecks for tests
+        .check_ratio = 1,
+    };
+    ApplyArgsManOptions(*node.args, mempool_opts);
+    return mempool_opts;
+}
+
 ChainTestingSetup::ChainTestingSetup(const std::string& chainName, const std::vector<const char*>& extra_args)
     : BasicTestingSetup(chainName, extra_args)
 {
@@ -251,7 +266,7 @@ ChainTestingSetup::ChainTestingSetup(const std::string& chainName, const std::ve
     GetMainSignals().RegisterBackgroundSignalScheduler(*m_node.scheduler);
 
     m_node.fee_estimator = std::make_unique<CBlockPolicyEstimator>();
-    m_node.mempool = std::make_unique<CTxMemPool>(m_node.fee_estimator.get(), m_node.args->GetIntArg("-checkmempool", 1));
+    m_node.mempool = std::make_unique<CTxMemPool>(MemPoolOptionsForTest(m_node));
 
     m_cache_sizes = CalculateCacheSizes(m_args);
 
@@ -487,7 +502,7 @@ CBlock TestChainSetup::CreateBlock(
     CChainState& chainstate)
 {
     const CChainParams& chainparams = Params();
-    CTxMemPool empty_pool;
+    CTxMemPool empty_pool{MemPoolOptionsForTest(m_node)};
     CBlock block = BlockAssembler(chainstate, m_node, &empty_pool, chainparams).CreateNewBlock(scriptPubKey)->block;
 
     std::vector<CTransactionRef> llmqCommitments;
