@@ -30,29 +30,24 @@ CMasternodeMetaMan::~CMasternodeMetaMan()
 
 UniValue CMasternodeMetaInfo::ToJson() const
 {
-    UniValue ret(UniValue::VOBJ);
-
     int64_t now = GetTime<std::chrono::seconds>().count();
 
-    ret.pushKV("lastDSQ", nLastDsq.load());
-    ret.pushKV("mixingTxCount", nMixingTxCount.load());
-    ret.pushKV("outboundAttemptCount", outboundAttemptCount.load());
-    ret.pushKV("lastOutboundAttempt", lastOutboundAttempt.load());
-    ret.pushKV("lastOutboundAttemptElapsed", now - lastOutboundAttempt.load());
-    ret.pushKV("lastOutboundSuccess", lastOutboundSuccess.load());
-    ret.pushKV("lastOutboundSuccessElapsed", now - lastOutboundSuccess.load());
-    {
-        LOCK(cs);
-        ret.pushKV("is_platform_banned", m_platform_ban);
-        ret.pushKV("platform_ban_height_updated", m_platform_ban_updated);
-    }
+    UniValue ret(UniValue::VOBJ);
+    ret.pushKV("lastDSQ", nLastDsq);
+    ret.pushKV("mixingTxCount", nMixingTxCount);
+    ret.pushKV("outboundAttemptCount", outboundAttemptCount);
+    ret.pushKV("lastOutboundAttempt", lastOutboundAttempt);
+    ret.pushKV("lastOutboundAttemptElapsed", now - lastOutboundAttempt);
+    ret.pushKV("lastOutboundSuccess", lastOutboundSuccess);
+    ret.pushKV("lastOutboundSuccessElapsed", now - lastOutboundSuccess);
+    ret.pushKV("is_platform_banned", m_platform_ban);
+    ret.pushKV("platform_ban_height_updated", m_platform_ban_updated);
 
     return ret;
 }
 
 void CMasternodeMetaInfo::AddGovernanceVote(const uint256& nGovernanceObjectHash)
 {
-    LOCK(cs);
     // Insert a zero value, or not. Then increment the value regardless. This
     // ensures the value is in the map.
     const auto& pair = mapGovernanceObjectsVotedOn.emplace(nGovernanceObjectHash, 0);
@@ -61,14 +56,12 @@ void CMasternodeMetaInfo::AddGovernanceVote(const uint256& nGovernanceObjectHash
 
 void CMasternodeMetaInfo::RemoveGovernanceObject(const uint256& nGovernanceObjectHash)
 {
-    LOCK(cs);
     // Whether or not the govobj hash exists in the map first is irrelevant.
     mapGovernanceObjectsVotedOn.erase(nGovernanceObjectHash);
 }
 
 CMasternodeMetaInfo CMasternodeMetaMan::GetInfo(const uint256& proTxHash)
 {
-    LOCK(cs);
     auto it = metaInfos.find(proTxHash);
     if (it == metaInfos.end()) return CMasternodeMetaInfo{};
 

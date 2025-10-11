@@ -13,7 +13,6 @@
 #include <uint256.h>
 #include <unordered_lru_cache.h>
 
-#include <atomic>
 #include <map>
 #include <optional>
 #include <vector>
@@ -31,58 +30,35 @@ static constexpr int MASTERNODE_MAX_FAILED_OUTBOUND_ATTEMPTS{5};
 // This is mostly local information, e.g. about mixing and governance
 class CMasternodeMetaInfo
 {
-    friend class CMasternodeMetaMan;
-
-private:
-    mutable Mutex cs;
-
-    uint256 proTxHash GUARDED_BY(cs);
+public:
+    uint256 proTxHash;
 
     //the dsq count from the last dsq broadcast of this node
-    std::atomic<int64_t> nLastDsq{0};
-    std::atomic<int> nMixingTxCount{0};
+    int64_t nLastDsq{0};
+    int nMixingTxCount{0};
 
     // KEEP TRACK OF GOVERNANCE ITEMS EACH MASTERNODE HAS VOTE UPON FOR RECALCULATION
-    std::map<uint256, int> mapGovernanceObjectsVotedOn GUARDED_BY(cs);
+    std::map<uint256, int> mapGovernanceObjectsVotedOn;
 
-    std::atomic<int> outboundAttemptCount{0};
-    std::atomic<int64_t> lastOutboundAttempt{0};
-    std::atomic<int64_t> lastOutboundSuccess{0};
+    int outboundAttemptCount{0};
+    int64_t lastOutboundAttempt{0};
+    int64_t lastOutboundSuccess{0};
 
     //! bool flag is node currently under platform ban by p2p message
-    bool m_platform_ban GUARDED_BY(cs){false};
+    bool m_platform_ban{false};
     //! height at which platform ban has been applied or removed
-    int m_platform_ban_updated GUARDED_BY(cs){0};
+    int m_platform_ban_updated{0};
 
 public:
     CMasternodeMetaInfo() = default;
     explicit CMasternodeMetaInfo(const uint256& _proTxHash) : proTxHash(_proTxHash) {}
-    CMasternodeMetaInfo(const CMasternodeMetaInfo& ref) :
-        proTxHash(ref.proTxHash),
-        nLastDsq(ref.nLastDsq.load()),
-        nMixingTxCount(ref.nMixingTxCount.load()),
-        mapGovernanceObjectsVotedOn(ref.mapGovernanceObjectsVotedOn),
-        lastOutboundAttempt(ref.lastOutboundAttempt.load()),
-        lastOutboundSuccess(ref.lastOutboundSuccess.load()),
-        m_platform_ban(ref.m_platform_ban),
-        m_platform_ban_updated(ref.m_platform_ban_updated)
-    {
-    }
+    CMasternodeMetaInfo(const CMasternodeMetaInfo& ref) = default;
 
-    template <typename Stream>
-    void Serialize(Stream& s) const EXCLUSIVE_LOCKS_REQUIRED(!cs)
+    SERIALIZE_METHODS(CMasternodeMetaInfo, obj)
     {
-        LOCK(cs);
-        s << proTxHash << nLastDsq << nMixingTxCount << mapGovernanceObjectsVotedOn << outboundAttemptCount
-          << lastOutboundAttempt << lastOutboundSuccess << m_platform_ban << m_platform_ban_updated;
-    }
-
-    template <typename Stream>
-    void Unserialize(Stream& s) EXCLUSIVE_LOCKS_REQUIRED(!cs)
-    {
-        LOCK(cs);
-        s >> proTxHash >> nLastDsq >> nMixingTxCount >> mapGovernanceObjectsVotedOn >> outboundAttemptCount >>
-            lastOutboundAttempt >> lastOutboundSuccess >> m_platform_ban >> m_platform_ban_updated;
+        READWRITE(obj.proTxHash, obj.nLastDsq, obj.nMixingTxCount, obj.mapGovernanceObjectsVotedOn,
+                  obj.outboundAttemptCount, obj.lastOutboundAttempt, obj.lastOutboundSuccess, obj.m_platform_ban,
+                  obj.m_platform_ban_updated);
     }
 
     UniValue ToJson() const EXCLUSIVE_LOCKS_REQUIRED(!cs);
@@ -90,7 +66,6 @@ public:
 public:
     const uint256 GetProTxHash() const EXCLUSIVE_LOCKS_REQUIRED(!cs)
     {
-        LOCK(cs);
         return proTxHash;
     }
     int64_t GetLastDsq() const { return nLastDsq; }
@@ -110,7 +85,6 @@ public:
     int64_t GetLastOutboundSuccess() const { return lastOutboundSuccess; }
     bool SetPlatformBan(bool is_banned, int height) EXCLUSIVE_LOCKS_REQUIRED(!cs)
     {
-        LOCK(cs);
         if (height < m_platform_ban_updated) {
             return false;
         }
@@ -123,7 +97,6 @@ public:
     }
     bool IsPlatformBanned() const EXCLUSIVE_LOCKS_REQUIRED(!cs)
     {
-        LOCK(cs);
         return m_platform_ban;
     }
 };
