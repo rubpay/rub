@@ -15,7 +15,6 @@
 
 #include <atomic>
 #include <map>
-#include <memory>
 #include <optional>
 #include <vector>
 
@@ -128,7 +127,6 @@ public:
         return m_platform_ban;
     }
 };
-using CMasternodeMetaInfoPtr = std::shared_ptr<CMasternodeMetaInfo>;
 
 class MasternodeMetaStore
 {
@@ -136,7 +134,7 @@ protected:
     static const std::string SERIALIZATION_VERSION_STRING;
 
     mutable Mutex cs;
-    std::map<uint256, CMasternodeMetaInfoPtr> metaInfos GUARDED_BY(cs);
+    std::map<uint256, CMasternodeMetaInfo> metaInfos GUARDED_BY(cs);
     // keep track of dsq count to prevent masternodes from gaming coinjoin queue
     std::atomic<int64_t> nDsqCount{0};
 
@@ -147,7 +145,7 @@ public:
         LOCK(cs);
         std::vector<CMasternodeMetaInfo> tmpMetaInfo;
         for (const auto& p : metaInfos) {
-            tmpMetaInfo.emplace_back(*p.second);
+            tmpMetaInfo.emplace_back(p.second);
         }
         s << SERIALIZATION_VERSION_STRING << tmpMetaInfo << nDsqCount;
     }
@@ -155,9 +153,9 @@ public:
     template<typename Stream>
     void Unserialize(Stream &s) EXCLUSIVE_LOCKS_REQUIRED(!cs)
     {
-        Clear();
-
         LOCK(cs);
+
+        metaInfos.clear();
         std::string strVersion;
         s >> strVersion;
         if (strVersion != SERIALIZATION_VERSION_STRING) {
@@ -165,9 +163,8 @@ public:
         }
         std::vector<CMasternodeMetaInfo> tmpMetaInfo;
         s >> tmpMetaInfo >> nDsqCount;
-        metaInfos.clear();
         for (auto& mm : tmpMetaInfo) {
-            metaInfos.emplace(mm.GetProTxHash(), std::make_shared<CMasternodeMetaInfo>(std::move(mm)));
+            metaInfos.emplace(mm.GetProTxHash(), CMasternodeMetaInfo{std::move(mm)});
         }
     }
 
@@ -233,6 +230,8 @@ private:
     mutable unordered_lru_cache<uint256, PlatformBanMessage, StaticSaltedHasher> m_seen_platform_bans GUARDED_BY(cs){
         SeenBanInventorySize};
 
+    CMasternodeMetaInfo& GetMetaInfo(const uint256& proTxHash) EXCLUSIVE_LOCKS_REQUIRED(cs);
+
 public:
     explicit CMasternodeMetaMan();
     ~CMasternodeMetaMan();
@@ -242,7 +241,6 @@ public:
     bool IsValid() const { return is_valid; }
 
     CMasternodeMetaInfo GetInfo(const uint256& proTxHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
-    CMasternodeMetaInfoPtr GetMetaInfo(const uint256& proTxHash, bool fCreate = true) EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
     // We keep track of dsq (mixing queues) count to avoid using same masternodes for mixing too often.
     // MN's threshold is calculated as the last dsq count this specific masternode was used in a mixing

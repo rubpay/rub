@@ -68,23 +68,20 @@ void CMasternodeMetaInfo::RemoveGovernanceObject(const uint256& nGovernanceObjec
 
 CMasternodeMetaInfo CMasternodeMetaMan::GetInfo(const uint256& proTxHash)
 {
-    const auto info = GetMetaInfo(proTxHash, false);
-    if (info == nullptr) return CMasternodeMetaInfo{};
+    LOCK(cs);
+    auto it = metaInfos.find(proTxHash);
+    if (it == metaInfos.end()) return CMasternodeMetaInfo{};
 
-    return *info;
+    return it->second;
 }
 
-CMasternodeMetaInfoPtr CMasternodeMetaMan::GetMetaInfo(const uint256& proTxHash, bool fCreate)
+CMasternodeMetaInfo& CMasternodeMetaMan::GetMetaInfo(const uint256& proTxHash)
 {
-    LOCK(cs);
     auto it = metaInfos.find(proTxHash);
     if (it != metaInfos.end()) {
         return it->second;
     }
-    if (!fCreate) {
-        return nullptr;
-    }
-    it = metaInfos.emplace(proTxHash, std::make_shared<CMasternodeMetaInfo>(proTxHash)).first;
+    it = metaInfos.emplace(proTxHash, CMasternodeMetaInfo{proTxHash}).first;
     return it->second;
 }
 
@@ -96,7 +93,7 @@ bool CMasternodeMetaMan::IsDsqOver(const uint256& protx_hash, int mn_count) cons
         LogPrint(BCLog::COINJOIN, "DSQUEUE -- node %s is logged\n", protx_hash.ToString());
         return false;
     }
-    const auto& meta_info = *it->second;
+    const auto& meta_info = it->second;
     int64_t last_dsq = meta_info.GetLastDsq();
     int64_t threshold = last_dsq + mn_count / 5;
 
@@ -107,16 +104,18 @@ bool CMasternodeMetaMan::IsDsqOver(const uint256& protx_hash, int mn_count) cons
 
 void CMasternodeMetaMan::AllowMixing(const uint256& proTxHash)
 {
-    auto mm = GetMetaInfo(proTxHash);
+    LOCK(cs);
+    auto& mm = GetMetaInfo(proTxHash);
     nDsqCount++;
-    mm->nLastDsq = nDsqCount.load();
-    mm->nMixingTxCount = 0;
+    mm.nLastDsq = nDsqCount.load();
+    mm.nMixingTxCount = 0;
 }
 
 void CMasternodeMetaMan::DisallowMixing(const uint256& proTxHash)
 {
-    auto mm = GetMetaInfo(proTxHash);
-    mm->nMixingTxCount++;
+    LOCK(cs);
+    auto& mm = GetMetaInfo(proTxHash);
+    mm.nMixingTxCount++;
 }
 
 bool CMasternodeMetaMan::IsValidForMixingTxes(const uint256& protx_hash) const
@@ -126,21 +125,22 @@ bool CMasternodeMetaMan::IsValidForMixingTxes(const uint256& protx_hash) const
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return true;
 
-    return it->second->IsValidForMixingTxes();
+    return it->second.IsValidForMixingTxes();
 }
 
 bool CMasternodeMetaMan::AddGovernanceVote(const uint256& proTxHash, const uint256& nGovernanceObjectHash)
 {
-    auto mm = GetMetaInfo(proTxHash);
-    mm->AddGovernanceVote(nGovernanceObjectHash);
+    LOCK(cs);
+    auto& mm = GetMetaInfo(proTxHash);
+    mm.AddGovernanceVote(nGovernanceObjectHash);
     return true;
 }
 
 void CMasternodeMetaMan::RemoveGovernanceObject(const uint256& nGovernanceObjectHash)
 {
     LOCK(cs);
-    for(const auto& p : metaInfos) {
-        p.second->RemoveGovernanceObject(nGovernanceObjectHash);
+    for (auto& p : metaInfos) {
+        p.second.RemoveGovernanceObject(nGovernanceObjectHash);
     }
 }
 
@@ -157,10 +157,10 @@ void CMasternodeMetaMan::SetLastOutboundAttempt(const uint256& protx_hash, int64
 
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) {
-        it = metaInfos.emplace(protx_hash, std::make_shared<CMasternodeMetaInfo>(protx_hash)).first;
+        it = metaInfos.emplace(protx_hash, CMasternodeMetaInfo{protx_hash}).first;
     }
 
-    return it->second->SetLastOutboundAttempt(t);
+    return it->second.SetLastOutboundAttempt(t);
 }
 
 void CMasternodeMetaMan::SetLastOutboundSuccess(const uint256& protx_hash, int64_t t)
@@ -169,10 +169,10 @@ void CMasternodeMetaMan::SetLastOutboundSuccess(const uint256& protx_hash, int64
 
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) {
-        it = metaInfos.emplace(protx_hash, std::make_shared<CMasternodeMetaInfo>(protx_hash)).first;
+        it = metaInfos.emplace(protx_hash, CMasternodeMetaInfo{protx_hash}).first;
     }
 
-    return it->second->SetLastOutboundSuccess(t);
+    return it->second.SetLastOutboundSuccess(t);
 }
 
 int64_t CMasternodeMetaMan::GetLastOutboundAttempt(const uint256& protx_hash) const
@@ -182,7 +182,7 @@ int64_t CMasternodeMetaMan::GetLastOutboundAttempt(const uint256& protx_hash) co
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return 0;
 
-    return it->second->GetLastOutboundAttempt();
+    return it->second.GetLastOutboundAttempt();
 }
 
 int64_t CMasternodeMetaMan::GetLastOutboundSuccess(const uint256& protx_hash) const
@@ -192,7 +192,7 @@ int64_t CMasternodeMetaMan::GetLastOutboundSuccess(const uint256& protx_hash) co
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return 0;
 
-    return it->second->GetLastOutboundSuccess();
+    return it->second.GetLastOutboundSuccess();
 }
 
 bool CMasternodeMetaMan::OutboundFailedTooManyTimes(const uint256& protx_hash) const
@@ -202,7 +202,7 @@ bool CMasternodeMetaMan::OutboundFailedTooManyTimes(const uint256& protx_hash) c
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return false;
 
-    return it->second->OutboundFailedTooManyTimes();
+    return it->second.OutboundFailedTooManyTimes();
 }
 
 bool CMasternodeMetaMan::IsPlatformBanned(const uint256& protx_hash) const
@@ -212,7 +212,7 @@ bool CMasternodeMetaMan::IsPlatformBanned(const uint256& protx_hash) const
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return false;
 
-    return it->second->IsPlatformBanned();
+    return it->second.IsPlatformBanned();
 }
 
 bool CMasternodeMetaMan::ResetPlatformBan(const uint256& protx_hash, int height)
@@ -222,7 +222,7 @@ bool CMasternodeMetaMan::ResetPlatformBan(const uint256& protx_hash, int height)
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) return false;
 
-    return it->second->SetPlatformBan(false, height);
+    return it->second.SetPlatformBan(false, height);
 }
 
 bool CMasternodeMetaMan::SetPlatformBan(const uint256& inv_hash, PlatformBanMessage&& ban_msg)
@@ -233,10 +233,10 @@ bool CMasternodeMetaMan::SetPlatformBan(const uint256& inv_hash, PlatformBanMess
 
     auto it = metaInfos.find(protx_hash);
     if (it == metaInfos.end()) {
-        it = metaInfos.emplace(protx_hash, std::make_shared<CMasternodeMetaInfo>(protx_hash)).first;
+        it = metaInfos.emplace(protx_hash, CMasternodeMetaInfo{protx_hash}).first;
     }
 
-    bool ret = it->second->SetPlatformBan(true, ban_msg.m_requested_height);
+    bool ret = it->second.SetPlatformBan(true, ban_msg.m_requested_height);
     if (ret) {
         m_seen_platform_bans.insert(inv_hash, std::move(ban_msg));
     }
