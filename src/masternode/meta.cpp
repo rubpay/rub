@@ -105,9 +105,10 @@ bool CMasternodeMetaMan::IsDsqOver(const uint256& protx_hash, int mn_count) cons
 
 void CMasternodeMetaMan::AllowMixing(const uint256& proTxHash)
 {
+    nDsqCount++;
+
     LOCK(cs);
     auto& mm = GetMetaInfo(proTxHash);
-    nDsqCount++;
     mm.m_last_dsq = nDsqCount.load();
     mm.m_mixing_tx_count = 0;
 }
@@ -115,25 +116,19 @@ void CMasternodeMetaMan::AllowMixing(const uint256& proTxHash)
 void CMasternodeMetaMan::DisallowMixing(const uint256& proTxHash)
 {
     LOCK(cs);
-    auto& mm = GetMetaInfo(proTxHash);
-    mm.m_mixing_tx_count++;
+    GetMetaInfo(proTxHash).m_mixing_tx_count++;
 }
 
 bool CMasternodeMetaMan::IsValidForMixingTxes(const uint256& protx_hash) const
 {
     LOCK(cs);
-
-    auto it = metaInfos.find(protx_hash);
-    if (it == metaInfos.end()) return true;
-
-    return it->second.m_mixing_tx_count <= MASTERNODE_MAX_MIXING_TXES;
+    return GetMetaInfoOrDefault(protx_hash).m_mixing_tx_count <= MASTERNODE_MAX_MIXING_TXES;
 }
 
 bool CMasternodeMetaMan::AddGovernanceVote(const uint256& proTxHash, const uint256& nGovernanceObjectHash)
 {
     LOCK(cs);
-    auto& mm = GetMetaInfo(proTxHash);
-    mm.AddGovernanceVote(nGovernanceObjectHash);
+    GetMetaInfo(proTxHash).AddGovernanceVote(nGovernanceObjectHash);
     return true;
 }
 
@@ -155,55 +150,37 @@ std::vector<uint256> CMasternodeMetaMan::GetAndClearDirtyGovernanceObjectHashes(
 void CMasternodeMetaMan::SetLastOutboundAttempt(const uint256& protx_hash, int64_t t)
 {
     LOCK(cs);
-
     GetMetaInfo(protx_hash).SetLastOutboundAttempt(t);
 }
 
 void CMasternodeMetaMan::SetLastOutboundSuccess(const uint256& protx_hash, int64_t t)
 {
     LOCK(cs);
-
     GetMetaInfo(protx_hash).SetLastOutboundSuccess(t);
 }
 
 int64_t CMasternodeMetaMan::GetLastOutboundAttempt(const uint256& protx_hash) const
 {
     LOCK(cs);
-
-    auto it = metaInfos.find(protx_hash);
-    if (it == metaInfos.end()) return 0;
-
-    return it->second.lastOutboundAttempt;
+    return GetMetaInfoOrDefault(protx_hash).lastOutboundAttempt;
 }
 
 int64_t CMasternodeMetaMan::GetLastOutboundSuccess(const uint256& protx_hash) const
 {
     LOCK(cs);
-
-    auto it = metaInfos.find(protx_hash);
-    if (it == metaInfos.end()) return 0;
-
-    return it->second.lastOutboundSuccess;
+    return GetMetaInfoOrDefault(protx_hash).lastOutboundSuccess;
 }
 
 bool CMasternodeMetaMan::OutboundFailedTooManyTimes(const uint256& protx_hash) const
 {
     LOCK(cs);
-
-    auto it = metaInfos.find(protx_hash);
-    if (it == metaInfos.end()) return false;
-
-    return it->second.outboundAttemptCount > MASTERNODE_MAX_FAILED_OUTBOUND_ATTEMPTS;
+    return GetMetaInfoOrDefault(protx_hash).outboundAttemptCount > MASTERNODE_MAX_FAILED_OUTBOUND_ATTEMPTS;
 }
 
 bool CMasternodeMetaMan::IsPlatformBanned(const uint256& protx_hash) const
 {
     LOCK(cs);
-
-    auto it = metaInfos.find(protx_hash);
-    if (it == metaInfos.end()) return false;
-
-    return it->second.m_platform_ban;
+    return GetMetaInfoOrDefault(protx_hash).m_platform_ban;
 }
 
 bool CMasternodeMetaMan::ResetPlatformBan(const uint256& protx_hash, int height)
