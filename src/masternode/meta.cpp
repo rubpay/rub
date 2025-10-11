@@ -66,6 +66,14 @@ void CMasternodeMetaInfo::RemoveGovernanceObject(const uint256& nGovernanceObjec
     mapGovernanceObjectsVotedOn.erase(nGovernanceObjectHash);
 }
 
+CMasternodeMetaInfo CMasternodeMetaMan::GetInfo(const uint256& proTxHash)
+{
+    const auto info = GetMetaInfo(proTxHash, false);
+    if (info == nullptr) return CMasternodeMetaInfo{};
+
+    return *info;
+}
+
 CMasternodeMetaInfoPtr CMasternodeMetaMan::GetMetaInfo(const uint256& proTxHash, bool fCreate)
 {
     LOCK(cs);

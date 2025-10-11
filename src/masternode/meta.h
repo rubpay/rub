@@ -241,6 +241,7 @@ public:
 
     bool IsValid() const { return is_valid; }
 
+    CMasternodeMetaInfo GetInfo(const uint256& proTxHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
     CMasternodeMetaInfoPtr GetMetaInfo(const uint256& proTxHash, bool fCreate = true) EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
     int64_t GetDsqCount() const { return nDsqCount; }
