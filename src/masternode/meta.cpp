@@ -141,6 +141,16 @@ std::vector<uint256> CMasternodeMetaMan::GetAndClearDirtyGovernanceObjectHashes(
     return vecTmp;
 }
 
+int64_t CMasternodeMetaMan::GetLastOutboundSuccess(const uint256& protx_hash) const
+{
+    LOCK(cs);
+
+    auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) return 0;
+
+    return it->second->GetLastOutboundSuccess();
+}
+
 bool CMasternodeMetaMan::OutboundFailedTooManyTimes(const uint256& protx_hash) const
 {
     LOCK(cs);
