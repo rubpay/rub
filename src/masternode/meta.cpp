@@ -141,6 +141,16 @@ std::vector<uint256> CMasternodeMetaMan::GetAndClearDirtyGovernanceObjectHashes(
     return vecTmp;
 }
 
+bool CMasternodeMetaMan::ResetPlatformBan(const uint256& protx_hash, int height)
+{
+    LOCK(cs);
+
+    auto it = metaInfos.find(protx_hash);
+    if (it == metaInfos.end()) return false;
+
+    return it->second->SetPlatformBan(false, height);
+}
+
 bool CMasternodeMetaMan::AlreadyHavePlatformBan(const uint256& inv_hash) const
 {
     LOCK(cs);

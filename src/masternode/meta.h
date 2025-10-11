@@ -258,6 +258,7 @@ public:
 
     std::vector<uint256> GetAndClearDirtyGovernanceObjectHashes() EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
+    bool ResetPlatformBan(const uint256& protx_hash, int height) EXCLUSIVE_LOCKS_REQUIRED(!cs);
     bool AlreadyHavePlatformBan(const uint256& inv_hash) const EXCLUSIVE_LOCKS_REQUIRED(!cs);
     std::optional<PlatformBanMessage> GetPlatformBan(const uint256& inv_hash) const EXCLUSIVE_LOCKS_REQUIRED(!cs);
     void RememberPlatformBan(const uint256& inv_hash, PlatformBanMessage&& msg) EXCLUSIVE_LOCKS_REQUIRED(!cs);
