@@ -74,7 +74,11 @@ const CMasternodeMetaInfo& CMasternodeMetaMan::GetMetaInfoOrDefault(const uint25
     return it->second;
 }
 
-CMasternodeMetaInfo CMasternodeMetaMan::GetInfo(const uint256& proTxHash) { return GetMetaInfoOrDefault(proTxHash); }
+CMasternodeMetaInfo CMasternodeMetaMan::GetInfo(const uint256& proTxHash) const
+{
+    LOCK (cs);
+    return GetMetaInfoOrDefault(proTxHash);
+}
 
 CMasternodeMetaInfo& CMasternodeMetaMan::GetMetaInfo(const uint256& proTxHash)
 {

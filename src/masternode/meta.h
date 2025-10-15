@@ -29,7 +29,7 @@ class CMasternodeMetaInfo
 public:
     uint256 m_protx_hash;
 
-    //the dsq count from the last dsq broadcast of this node
+    //! the dsq count from the last dsq broadcast of this node
     int64_t m_last_dsq{0};
     int m_mixing_tx_count{0};
 
@@ -60,17 +60,16 @@ public:
                   obj.m_platform_ban_updated);
     }
 
-    UniValue ToJson() const EXCLUSIVE_LOCKS_REQUIRED(!cs);
+    UniValue ToJson() const;
 
-public:
     // KEEP TRACK OF EACH GOVERNANCE ITEM IN CASE THIS NODE GOES OFFLINE, SO WE CAN RECALCULATE THEIR STATUS
-    void AddGovernanceVote(const uint256& nGovernanceObjectHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
-
-    void RemoveGovernanceObject(const uint256& nGovernanceObjectHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
+    void AddGovernanceVote(const uint256& nGovernanceObjectHash);
+    void RemoveGovernanceObject(const uint256& nGovernanceObjectHash);
 
     void SetLastOutboundAttempt(int64_t t) { lastOutboundAttempt = t; ++outboundAttemptCount; }
     void SetLastOutboundSuccess(int64_t t) { lastOutboundSuccess = t; outboundAttemptCount = 0; }
-    bool SetPlatformBan(bool is_banned, int height) EXCLUSIVE_LOCKS_REQUIRED(!cs)
+
+    bool SetPlatformBan(bool is_banned, int height)
     {
         if (height < m_platform_ban_updated) {
             return false;
@@ -197,7 +196,7 @@ public:
 
     bool IsValid() const { return is_valid; }
 
-    CMasternodeMetaInfo GetInfo(const uint256& proTxHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
+    CMasternodeMetaInfo GetInfo(const uint256& proTxHash) const EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
     // We keep track of dsq (mixing queues) count to avoid using same masternodes for mixing too often.
     // MN's threshold is calculated as the last dsq count this specific masternode was used in a mixing
@@ -205,8 +204,8 @@ public:
     // masternodes before we ever see a masternode that we know already mixed someone's funds earlier.
     bool IsDsqOver(const uint256& protx_hash, int mn_count) const EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
-    void AllowMixing(const uint256& proTxHash);
-    void DisallowMixing(const uint256& proTxHash);
+    void AllowMixing(const uint256& proTxHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
+    void DisallowMixing(const uint256& proTxHash) EXCLUSIVE_LOCKS_REQUIRED(!cs);
     bool IsValidForMixingTxes(const uint256& protx_hash) const EXCLUSIVE_LOCKS_REQUIRED(!cs);
 
     void AddGovernanceVote(const uint256& proTxHash, const uint256& nGovernanceObjectHash);
