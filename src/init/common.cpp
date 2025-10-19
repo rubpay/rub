@@ -32,6 +32,7 @@ void SetGlobals()
     LogPrintf("Using the '%s' SHA256 implementation\n", sha256_algo);
     RandomInit();
     ECC_Start();
+    BLSInit();
 }
 
 void UnsetGlobals()
@@ -43,10 +44,6 @@ bool SanityChecks()
 {
     if (!ECC_InitSanityCheck()) {
         return InitError(Untranslated("Elliptic curve cryptography sanity check failure. Aborting."));
-    }
-
-    if (!BLSInit()) {
-        return false;
     }
 
     if (!Random_SanityCheck()) {
