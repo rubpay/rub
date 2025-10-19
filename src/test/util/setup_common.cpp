@@ -189,8 +189,8 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName, const std::ve
     SetupNetworking();
     InitSignatureCache();
     InitScriptExecutionCache();
-    m_node.chain = interfaces::MakeChain(m_node);
 
+    m_node.chain = interfaces::MakeChain(m_node);
     m_node.netgroupman = std::make_unique<NetGroupManager>(/*asmap=*/std::vector<bool>());
     m_node.addrman = std::make_unique<AddrMan>(*m_node.netgroupman,
                                                /*deterministic=*/false,
@@ -203,6 +203,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName, const std::ve
             strprintf("Invalid -socketevents ('%s') specified. Only these modes are supported: %s",
                       sem_str, GetSupportedSocketEventsStr()));
     }
+
     {
         auto stats_client = StatsdClient::make(*m_node.args);
         if (!stats_client) {
@@ -214,32 +215,43 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName, const std::ve
     m_node.connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman); // Deterministic randomness for tests.
 
     fCheckBlockIndex = true;
+
+    m_node.mn_metaman = std::make_unique<CMasternodeMetaMan>();
+    m_node.netfulfilledman = std::make_unique<CNetFulfilledRequestManager>();
+    m_node.sporkman = std::make_unique<CSporkManager>();
     m_node.evodb = std::make_unique<CEvoDB>(util::DbWrapperParams{m_node.args->GetDataDirNet(), /*memory=*/true, /*wipe=*/true});
-    m_node.mnhf_manager = std::make_unique<CMNHFManager>(*m_node.evodb);
     m_node.cpoolman = std::make_unique<CCreditPoolManager>(*m_node.evodb);
+    m_node.mnhf_manager = std::make_unique<CMNHFManager>(*m_node.evodb);
+
     static bool noui_connected = false;
     if (!noui_connected) {
         noui_connect();
         noui_connected = true;
     }
+
     bls::bls_legacy_scheme.store(true);
 }
 
 BasicTestingSetup::~BasicTestingSetup()
 {
     SetMockTime(0s); // Reset mocktime for following tests
-    m_node.cpoolman.reset();
-    m_node.mnhf_manager.reset();
-    m_node.evodb.reset();
-    ::g_socket_events_mode = SocketEventsMode::Unknown;
-    m_node.connman.reset();
-    m_node.addrman.reset();
-    m_node.netgroupman.reset();
-    ::g_stats_client.reset();
-
     LogInstance().DisconnectTestLogger();
     fs::remove_all(m_path_root);
     gArgs.ClearArgs();
+
+    m_node.mnhf_manager.reset();
+    m_node.cpoolman.reset();
+    m_node.evodb.reset();
+    m_node.sporkman.reset();
+    m_node.netfulfilledman.reset();
+    m_node.mn_metaman.reset();
+    m_node.connman.reset();
+    ::g_stats_client.reset();
+    ::g_socket_events_mode = SocketEventsMode::Unknown;
+    m_node.addrman.reset();
+    m_node.netgroupman.reset();
+    m_node.args = nullptr;
+
     ECC_Stop();
 }
 
@@ -260,9 +272,6 @@ ChainTestingSetup::ChainTestingSetup(const std::string& chainName, const std::ve
     m_node.chainman = std::make_unique<ChainstateManager>();
     m_node.chainman->m_blockman.m_block_tree_db = std::make_unique<CBlockTreeDB>(m_cache_sizes.block_tree_db, true);
 
-    m_node.mn_metaman = std::make_unique<CMasternodeMetaMan>();
-    m_node.netfulfilledman = std::make_unique<CNetFulfilledRequestManager>();
-    m_node.sporkman = std::make_unique<CSporkManager>();
     m_node.mn_sync = std::make_unique<CMasternodeSync>(*m_node.connman, *m_node.netfulfilledman);
     m_node.govman = std::make_unique<CGovernanceManager>(*m_node.mn_metaman, *m_node.netfulfilledman, *m_node.chainman, m_node.dmnman, *m_node.mn_sync);
 
@@ -278,15 +287,12 @@ ChainTestingSetup::~ChainTestingSetup()
     StopScriptCheckWorkerThreads();
     GetMainSignals().FlushBackgroundCallbacks();
     GetMainSignals().UnregisterBackgroundSignalScheduler();
-    m_node.mn_sync.reset();
     m_node.govman.reset();
-    m_node.sporkman.reset();
-    m_node.netfulfilledman.reset();
-    m_node.mn_metaman.reset();
-    m_node.args = nullptr;
-    m_node.mempool.reset();
-    m_node.scheduler.reset();
+    m_node.mn_sync.reset();
     m_node.chainman.reset();
+    m_node.mempool.reset();
+    m_node.fee_estimator.reset();
+    m_node.scheduler.reset();
 }
 
 TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const char*>& extra_args)
