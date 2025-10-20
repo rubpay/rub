@@ -22,6 +22,7 @@ cd "${BASE_ROOT_DIR}/build-ci/dashcore-${BUILD_TARGET}"
 iwyu_tool.py \
   "src/compat" \
   "src/init" \
+  "src/node/mempool_args.cpp" \
   "src/rpc/fees.cpp" \
   "src/rpc/signmessage.cpp" \
   "src/test/fuzz/txorphan.cpp" \
