@@ -1183,6 +1183,7 @@ public:
         return Assert(m_node.chainman)->IsSnapshotActive();
     }
 
+    NodeContext* context() override { return &m_node; }
     NodeContext& m_node;
 };
 } // namespace
