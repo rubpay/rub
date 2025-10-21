@@ -259,6 +259,12 @@ BITCOIN_CORE_H = \
   instantsend/instantsend.h \
   instantsend/lock.h \
   instantsend/signing.h \
+  kernel/chain.h \
+  kernel/checks.h \
+  kernel/coinstats.h \
+  kernel/context.h \
+  kernel/mempool_limits.h \
+  kernel/mempool_options.h \
   key.h \
   key_io.h \
   limitedmap.h \
@@ -305,21 +311,22 @@ BITCOIN_CORE_H = \
   node/caches.h \
   node/chainstate.h \
   node/coin.h \
-  node/coinstats.h \
   node/connection_types.h \
   node/context.h \
   node/eviction.h \
+  node/interface_ui.h \
+  node/mempool_args.h \
   node/miner.h \
   node/minisketchwrapper.h \
   node/psbt.h \
   node/transaction.h \
   node/txreconciliation.h \
-  node/interface_ui.h \
   node/utxo_snapshot.h \
   noui.h \
   outputtype.h \
   policy/feerate.h \
   policy/fees.h \
+  policy/fees_args.h \
   policy/packages.h \
   policy/policy.h \
   policy/settings.h \
@@ -528,6 +535,10 @@ libbitcoin_node_a_SOURCES = \
   instantsend/instantsend.cpp \
   instantsend/lock.cpp \
   instantsend/signing.cpp \
+  kernel/chain.cpp \
+  kernel/checks.cpp \
+  kernel/coinstats.cpp \
+  kernel/context.cpp \
   llmq/blockprocessor.cpp \
   llmq/commitment.cpp \
   llmq/context.cpp \
@@ -559,19 +570,20 @@ libbitcoin_node_a_SOURCES = \
   node/caches.cpp \
   node/chainstate.cpp \
   node/coin.cpp \
-  node/coinstats.cpp \
   node/connection_types.cpp \
   node/context.cpp \
   node/eviction.cpp \
+  node/interface_ui.cpp \
   node/interfaces.cpp \
+  node/mempool_args.cpp \
   node/miner.cpp \
   node/minisketchwrapper.cpp \
   node/psbt.cpp \
   node/transaction.cpp \
   node/txreconciliation.cpp \
-  node/interface_ui.cpp \
   noui.cpp \
   policy/fees.cpp \
+  policy/fees_args.cpp \
   policy/packages.cpp \
   policy/policy.cpp \
   policy/settings.cpp \
@@ -1084,7 +1096,21 @@ dash_wallet_SOURCES = bitcoin-wallet.cpp
 dash_wallet_CPPFLAGS = $(bitcoin_bin_cppflags)
 dash_wallet_CXXFLAGS = $(bitcoin_bin_cxxflags)
 dash_wallet_LDFLAGS = $(bitcoin_bin_ldflags)
-dash_wallet_LDADD = $(LIBBITCOIN_WALLET_TOOL) $(bitcoin_bin_ldadd)
+dash_wallet_LDADD = \
+  $(LIBBITCOIN_WALLET_TOOL) \
+  $(LIBBITCOIN_WALLET) \
+  $(LIBBITCOIN_COMMON) \
+  $(LIBBITCOIN_UTIL) \
+  $(LIBUNIVALUE) \
+  $(LIBBITCOIN_CONSENSUS) \
+  $(LIBBITCOIN_CRYPTO) \
+  $(LIBDASHBLS) \
+  $(LIBSECP256K1) \
+  $(BACKTRACE_LIB) \
+  $(BOOST_LIBS) \
+  $(BDB_LIBS) \
+  $(SQLITE_LIBS) \
+  $(GMP_LIBS)
 
 if TARGET_WINDOWS
 dash_wallet_SOURCES += dash-wallet-res.rc

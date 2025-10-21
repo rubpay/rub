@@ -42,7 +42,7 @@ std::vector<std::shared_ptr<CBlock>> CreateBlockChain(size_t total_height, const
         coinbase_tx.vin[0].prevout.SetNull();
         coinbase_tx.vout.resize(1);
         coinbase_tx.vout[0].scriptPubKey = P2SH_OP_TRUE;
-        coinbase_tx.vout[0].nValue = GetBlockSubsidyInner(params.GenesisBlock().nBits, height, params.GetConsensus(), false);
+        coinbase_tx.vout[0].nValue = GetBlockSubsidyInner(params.GenesisBlock().nBits, height, params.GetConsensus(), /*is_v20_active_override=*/false);
         coinbase_tx.vin[0].scriptSig = CScript() << (height + 1) << OP_0;
         block.vtx = {MakeTransactionRef(std::move(coinbase_tx))};
 
@@ -70,7 +70,7 @@ CTxIn MineBlock(const NodeContext& node, const CScript& coinbase_scriptPubKey)
         assert(block->nNonce);
     }
 
-    bool processed{Assert(node.chainman)->ProcessNewBlock(Params(), block, true, nullptr)};
+    bool processed{Assert(node.chainman)->ProcessNewBlock(block, true, nullptr)};
     assert(processed);
 
     return CTxIn{block->vtx[0]->GetHash(), 0};

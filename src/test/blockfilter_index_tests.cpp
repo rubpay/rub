@@ -7,6 +7,7 @@
 #include <consensus/merkle.h>
 #include <consensus/validation.h>
 #include <index/blockfilterindex.h>
+#include <interfaces/chain.h>
 #include <node/miner.h>
 #include <pow.h>
 #include <script/standard.h>
@@ -102,7 +103,7 @@ bool BuildChainTestingSetup::BuildChain(const CBlockIndex* pindex,
         CBlockHeader header = block->GetBlockHeader();
 
         BlockValidationState state;
-        if (!Assert(m_node.chainman)->ProcessNewBlockHeaders({header}, state, Params(), &pindex)) {
+        if (!Assert(m_node.chainman)->ProcessNewBlockHeaders({header}, state, &pindex)) {
             return false;
         }
     }
@@ -112,7 +113,7 @@ bool BuildChainTestingSetup::BuildChain(const CBlockIndex* pindex,
 
 BOOST_FIXTURE_TEST_CASE(blockfilter_index_initial_sync, BuildChainTestingSetup)
 {
-    BlockFilterIndex filter_index(BlockFilterType::BASIC_FILTER, 1 << 20, true);
+    BlockFilterIndex filter_index(interfaces::MakeChain(m_node), BlockFilterType::BASIC_FILTER, 1 << 20, true);
 
     uint256 last_header;
 
@@ -139,7 +140,7 @@ BOOST_FIXTURE_TEST_CASE(blockfilter_index_initial_sync, BuildChainTestingSetup)
     // BlockUntilSyncedToCurrentChain should return false before index is started.
     BOOST_CHECK(!filter_index.BlockUntilSyncedToCurrentChain());
 
-    BOOST_REQUIRE(filter_index.Start(m_node.chainman->ActiveChainstate()));
+    BOOST_REQUIRE(filter_index.Start());
 
     // Allow filter index to catch up with the block index.
     IndexWaitSynced(filter_index);
@@ -174,7 +175,7 @@ BOOST_FIXTURE_TEST_CASE(blockfilter_index_initial_sync, BuildChainTestingSetup)
     uint256 chainA_last_header = last_header;
     for (size_t i = 0; i < 2; i++) {
         const auto& block = chainA[i];
-        BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(Params(), block, true, nullptr));
+        BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(block, true, nullptr));
     }
     for (size_t i = 0; i < 2; i++) {
         const auto& block = chainA[i];
@@ -192,7 +193,7 @@ BOOST_FIXTURE_TEST_CASE(blockfilter_index_initial_sync, BuildChainTestingSetup)
     uint256 chainB_last_header = last_header;
     for (size_t i = 0; i < 3; i++) {
         const auto& block = chainB[i];
-        BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(Params(), block, true, nullptr));
+        BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(block, true, nullptr));
     }
     for (size_t i = 0; i < 3; i++) {
         const auto& block = chainB[i];
@@ -223,7 +224,7 @@ BOOST_FIXTURE_TEST_CASE(blockfilter_index_initial_sync, BuildChainTestingSetup)
     // Reorg back to chain A.
      for (size_t i = 2; i < 4; i++) {
          const auto& block = chainA[i];
-         BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(Params(), block, true, nullptr));
+         BOOST_REQUIRE(Assert(m_node.chainman)->ProcessNewBlock(block, true, nullptr));
      }
 
      // Check that chain A and B blocks can be retrieved.
@@ -276,14 +277,14 @@ BOOST_FIXTURE_TEST_CASE(blockfilter_index_init_destroy, BasicTestingSetup)
     filter_index = GetBlockFilterIndex(BlockFilterType::BASIC_FILTER);
     BOOST_CHECK(filter_index == nullptr);
 
-    BOOST_CHECK(InitBlockFilterIndex(BlockFilterType::BASIC_FILTER, 1 << 20, true, false));
+    BOOST_CHECK(InitBlockFilterIndex([&]{ return interfaces::MakeChain(m_node); }, BlockFilterType::BASIC_FILTER, 1 << 20, true, false));
 
     filter_index = GetBlockFilterIndex(BlockFilterType::BASIC_FILTER);
     BOOST_CHECK(filter_index != nullptr);
     BOOST_CHECK(filter_index->GetFilterType() == BlockFilterType::BASIC_FILTER);
 
     // Initialize returns false if index already exists.
-    BOOST_CHECK(!InitBlockFilterIndex(BlockFilterType::BASIC_FILTER, 1 << 20, true, false));
+    BOOST_CHECK(!InitBlockFilterIndex([&]{ return interfaces::MakeChain(m_node); }, BlockFilterType::BASIC_FILTER, 1 << 20, true, false));
 
     int iter_count = 0;
     ForEachBlockFilterIndex([&iter_count](BlockFilterIndex& _index) { iter_count++; });
@@ -298,7 +299,7 @@ BOOST_FIXTURE_TEST_CASE(blockfilter_index_init_destroy, BasicTestingSetup)
     BOOST_CHECK(filter_index == nullptr);
 
     // Reinitialize index.
-    BOOST_CHECK(InitBlockFilterIndex(BlockFilterType::BASIC_FILTER, 1 << 20, true, false));
+    BOOST_CHECK(InitBlockFilterIndex([&]{ return interfaces::MakeChain(m_node); }, BlockFilterType::BASIC_FILTER, 1 << 20, true, false));
 
     DestroyAllBlockFilterIndexes();
 

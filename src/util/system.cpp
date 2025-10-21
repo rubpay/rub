@@ -559,11 +559,14 @@ bool ArgsManager::InitSettings(std::string& error)
     return true;
 }
 
-bool ArgsManager::GetSettingsPath(fs::path* filepath, bool temp) const
+bool ArgsManager::GetSettingsPath(fs::path* filepath, bool temp, bool backup) const
 {
     fs::path settings = GetPathArg("-settings", BITCOIN_SETTINGS_FILENAME);
     if (settings.empty()) {
         return false;
+    }
+    if (backup) {
+        settings += ".bak";
     }
     if (filepath) {
         *filepath = fsbridge::AbsPathJoin(GetDataDirNet(), temp ? settings + ".tmp" : settings);
@@ -605,10 +608,10 @@ bool ArgsManager::ReadSettingsFile(std::vector<std::string>* errors)
     return true;
 }
 
-bool ArgsManager::WriteSettingsFile(std::vector<std::string>* errors) const
+bool ArgsManager::WriteSettingsFile(std::vector<std::string>* errors, bool backup) const
 {
     fs::path path, path_tmp;
-    if (!GetSettingsPath(&path, /* temp= */ false) || !GetSettingsPath(&path_tmp, /* temp= */ true)) {
+    if (!GetSettingsPath(&path, /*temp=*/false, backup) || !GetSettingsPath(&path_tmp, /*temp=*/true, backup)) {
         throw std::logic_error("Attempt to write settings file when dynamic settings are disabled.");
     }
 
@@ -625,6 +628,13 @@ bool ArgsManager::WriteSettingsFile(std::vector<std::string>* errors) const
     return true;
 }
 
+util::SettingsValue ArgsManager::GetPersistentSetting(const std::string& name) const
+{
+    LOCK(cs_args);
+    return util::GetSetting(m_settings, m_network, name, !UseDefaultSection("-" + name),
+        /*ignore_nonpersistent=*/true, /*get_chain_name=*/false);
+}
+
 bool ArgsManager::IsArgNegated(const std::string& strArg) const
 {
     return GetSetting(strArg).isFalse();
@@ -632,20 +642,75 @@ bool ArgsManager::IsArgNegated(const std::string& strArg) const
 
 std::string ArgsManager::GetArg(const std::string& strArg, const std::string& strDefault) const
 {
+    return GetArg(strArg).value_or(strDefault);
+}
+
+std::optional<std::string> ArgsManager::GetArg(const std::string& strArg) const
+{
     const util::SettingsValue value = GetSetting(strArg);
-    return value.isNull() ? strDefault : value.isFalse() ? "0" : value.isTrue() ? "1" : value.isNum() ? value.getValStr() : value.get_str();
+    return SettingToString(value);
+}
+
+std::optional<std::string> SettingToString(const util::SettingsValue& value)
+{
+    if (value.isNull()) return std::nullopt;
+    if (value.isFalse()) return "0";
+    if (value.isTrue()) return "1";
+    if (value.isNum()) return value.getValStr();
+    return value.get_str();
+}
+
+std::string SettingToString(const util::SettingsValue& value, const std::string& strDefault)
+{
+    return SettingToString(value).value_or(strDefault);
 }
 
 int64_t ArgsManager::GetIntArg(const std::string& strArg, int64_t nDefault) const
 {
+    return GetIntArg(strArg).value_or(nDefault);
+}
+
+std::optional<int64_t> ArgsManager::GetIntArg(const std::string& strArg) const
+{
     const util::SettingsValue value = GetSetting(strArg);
-    return value.isNull() ? nDefault : value.isFalse() ? 0 : value.isTrue() ? 1 : value.isNum() ? value.getInt<int64_t>() : LocaleIndependentAtoi<int64_t>(value.get_str());
+    return SettingToInt(value);
+}
+
+std::optional<int64_t> SettingToInt(const util::SettingsValue& value)
+{
+    if (value.isNull()) return std::nullopt;
+    if (value.isFalse()) return 0;
+    if (value.isTrue()) return 1;
+    if (value.isNum()) return value.getInt<int64_t>();
+    return LocaleIndependentAtoi<int64_t>(value.get_str());
+}
+
+int64_t SettingToInt(const util::SettingsValue& value, int64_t nDefault)
+{
+    return SettingToInt(value).value_or(nDefault);
 }
 
 bool ArgsManager::GetBoolArg(const std::string& strArg, bool fDefault) const
 {
+    return GetBoolArg(strArg).value_or(fDefault);
+}
+
+std::optional<bool> ArgsManager::GetBoolArg(const std::string& strArg) const
+{
     const util::SettingsValue value = GetSetting(strArg);
-    return value.isNull() ? fDefault : value.isBool() ? value.get_bool() : InterpretBool(value.get_str());
+    return SettingToBool(value);
+}
+
+std::optional<bool> SettingToBool(const util::SettingsValue& value)
+{
+    if (value.isNull()) return std::nullopt;
+    if (value.isBool()) return value.get_bool();
+    return InterpretBool(value.get_str());
+}
+
+bool SettingToBool(const util::SettingsValue& value, bool fDefault)
+{
+    return SettingToBool(value).value_or(fDefault);
 }
 
 bool ArgsManager::SoftSetArg(const std::string& strArg, const std::string& strValue)
@@ -1086,6 +1151,7 @@ std::string ArgsManager::GetChainName() const
         LOCK(cs_args);
         util::SettingsValue value = util::GetSetting(m_settings, /* section= */ "", SettingName(arg),
             /* ignore_default_section_config= */ false,
+            /*ignore_nonpersistent=*/false,
             /* get_chain_name= */ true);
         return value.isNull() ? false : value.isBool() ? value.get_bool() : (!interpret_bool || InterpretBool(value.get_str()));
     };
@@ -1154,7 +1220,8 @@ util::SettingsValue ArgsManager::GetSetting(const std::string& arg) const
 {
     LOCK(cs_args);
     return util::GetSetting(
-        m_settings, m_network, SettingName(arg), !UseDefaultSection(arg), /* get_chain_name= */ false);
+        m_settings, m_network, SettingName(arg), !UseDefaultSection(arg),
+        /*ignore_nonpersistent=*/false, /*get_chain_name=*/false);
 }
 
 std::vector<util::SettingsValue> ArgsManager::GetSettingsList(const std::string& arg) const

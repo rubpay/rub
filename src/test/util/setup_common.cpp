@@ -16,14 +16,18 @@
 #include <crypto/x11/dispatch.h>
 #include <index/txindex.h>
 #include <init.h>
+#include <init/common.h>
 #include <interfaces/chain.h>
 #include <net.h>
 #include <net_processing.h>
 #include <noui.h>
 #include <node/blockstorage.h>
 #include <node/chainstate.h>
+#include <node/context.h>
+#include <node/mempool_args.h>
 #include <node/miner.h>
 #include <policy/fees.h>
+#include <policy/fees_args.h>
 #include <pow.h>
 #include <rpc/blockchain.h>
 #include <rpc/register.h>
@@ -35,6 +39,7 @@
 #include <test/util/index.h>
 #include <test/util/net.h>
 #include <txdb.h>
+#include <txmempool.h>
 #include <util/strencodings.h>
 #include <util/string.h>
 #include <util/thread.h>
@@ -79,6 +84,8 @@
 
 using node::BlockAssembler;
 using node::CalculateCacheSizes;
+using node::fPruneMode;
+using node::fReindex;
 using node::DashChainstateSetup;
 using node::DashChainstateSetupClose;
 using node::DEFAULT_ADDRESSINDEX;
@@ -87,8 +94,6 @@ using node::DEFAULT_TIMESTAMPINDEX;
 using node::LoadChainstate;
 using node::NodeContext;
 using node::VerifyLoadedChainstate;
-using node::fPruneMode;
-using node::fReindex;
 
 const std::function<std::string(const char*)> G_TRANSLATION_FUN = nullptr;
 UrlDecodeFn* const URL_DECODE = nullptr;
@@ -180,10 +185,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName, const std::ve
     InitLogging(*m_node.args);
     AppInitParameterInteraction(*m_node.args);
     LogInstance().StartLogging();
-    SapphireAutoDetect();
-    SHA256AutoDetect();
-    ECC_Start();
-    BLSInit();
+    m_node.kernel = std::make_unique<kernel::Context>();
     SetupEnvironment();
     SetupNetworking();
     InitSignatureCache();
@@ -239,24 +241,38 @@ BasicTestingSetup::~BasicTestingSetup()
     LogInstance().DisconnectTestLogger();
     fs::remove_all(m_path_root);
     gArgs.ClearArgs();
-    ECC_Stop();
+}
+
+CTxMemPool::Options MemPoolOptionsForTest(const NodeContext& node)
+{
+    CTxMemPool::Options mempool_opts{
+        .estimator = node.fee_estimator.get(),
+        // Default to always checking mempool regardless of
+        // chainparams.DefaultConsistencyChecks for tests
+        .check_ratio = 1,
+    };
+    const auto err{ApplyArgsManOptions(*node.args, ::Params(), mempool_opts)};
+    Assert(!err);
+    return mempool_opts;
 }
 
 ChainTestingSetup::ChainTestingSetup(const std::string& chainName, const std::vector<const char*>& extra_args)
     : BasicTestingSetup(chainName, extra_args)
 {
+    const CChainParams& chainparams = Params();
+
     // We have to run a scheduler thread to prevent ActivateBestChain
     // from blocking due to queue overrun.
     m_node.scheduler = std::make_unique<CScheduler>();
     m_node.scheduler->m_service_thread = std::thread(util::TraceThread, "scheduler", [&] { m_node.scheduler->serviceQueue(); });
     GetMainSignals().RegisterBackgroundSignalScheduler(*m_node.scheduler);
 
-    m_node.fee_estimator = std::make_unique<CBlockPolicyEstimator>();
-    m_node.mempool = std::make_unique<CTxMemPool>(m_node.fee_estimator.get(), m_node.args->GetIntArg("-checkmempool", 1));
+    m_node.fee_estimator = std::make_unique<CBlockPolicyEstimator>(FeeestPath(*m_node.args));
+    m_node.mempool = std::make_unique<CTxMemPool>(MemPoolOptionsForTest(m_node));
 
     m_cache_sizes = CalculateCacheSizes(m_args);
 
-    m_node.chainman = std::make_unique<ChainstateManager>();
+    m_node.chainman = std::make_unique<ChainstateManager>(chainparams);
     m_node.chainman->m_blockman.m_block_tree_db = std::make_unique<CBlockTreeDB>(m_cache_sizes.block_tree_db, true);
 
     m_node.mn_metaman = std::make_unique<CMasternodeMetaMan>();
@@ -419,9 +435,9 @@ TestChainSetup::TestChainSetup(int num_blocks, const std::string& chain_name, co
     this->mineBlocks(num_blocks);
 
     // Initialize transaction index *after* chain has been constructed
-    g_txindex = std::make_unique<TxIndex>(1 << 20, true);
+    g_txindex = std::make_unique<TxIndex>(interfaces::MakeChain(m_node), 1 << 20, true);
     assert(!g_txindex->BlockUntilSyncedToCurrentChain());
-    if (!g_txindex->Start(m_node.chainman->ActiveChainstate())) {
+    if (!g_txindex->Start()) {
         throw std::runtime_error("TxIndex::Start() failed.");
     }
     IndexWaitSynced(*g_txindex);
@@ -475,11 +491,9 @@ CBlock TestChainSetup::CreateAndProcessBlock(
         chainstate = &Assert(m_node.chainman)->ActiveChainstate();
     }
 
-    const CChainParams& chainparams = Params();
     auto block = this->CreateBlock(txns, scriptPubKey, *chainstate);
-
     std::shared_ptr<const CBlock> shared_pblock = std::make_shared<const CBlock>(block);
-    Assert(m_node.chainman)->ProcessNewBlock(chainparams, shared_pblock, true, nullptr);
+    Assert(m_node.chainman)->ProcessNewBlock(shared_pblock, true, nullptr);
 
     return block;
 }
@@ -490,7 +504,7 @@ CBlock TestChainSetup::CreateBlock(
     CChainState& chainstate)
 {
     const CChainParams& chainparams = Params();
-    CTxMemPool empty_pool;
+    CTxMemPool empty_pool{MemPoolOptionsForTest(m_node)};
     CBlock block = BlockAssembler(chainstate, m_node, &empty_pool, chainparams).CreateNewBlock(scriptPubKey)->block;
 
     std::vector<CTransactionRef> llmqCommitments;
