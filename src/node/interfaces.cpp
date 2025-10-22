@@ -87,8 +87,6 @@ using interfaces::Node;
 using interfaces::WalletLoader;
 
 namespace node {
-// All members of the classes in this namespace are intentionally public, as the
-// classes themselves are private.
 namespace {
 class EVOImpl : public EVO
 {
@@ -407,12 +405,15 @@ class ExternalSignerImpl : public interfaces::ExternalSigner
 public:
     ExternalSignerImpl(::ExternalSigner signer) : m_signer(std::move(signer)) {}
     std::string getName() override { return m_signer.m_name; }
+private:
     ::ExternalSigner m_signer;
 };
 #endif
 
 class NodeImpl : public Node
 {
+private:
+    ChainstateManager& chainman() { return *Assert(m_context->chainman); }
 public:
     EVOImpl m_evo;
     GOVImpl m_gov;
@@ -599,7 +600,12 @@ public:
     }
     double getVerificationProgress() override
     {
-        return GuessVerificationProgress(Params().TxData(), WITH_LOCK(::cs_main, return chainman().ActiveChain().Tip()));
+        const CBlockIndex* tip;
+        {
+            LOCK(::cs_main);
+            tip = chainman().ActiveChain().Tip();
+        }
+        return GuessVerificationProgress(Params().TxData(), tip);
     }
     bool isInitialBlockDownload() override {
         return chainman().ActiveChainstate().IsInitialBlockDownload();
@@ -722,7 +728,6 @@ public:
             }));
     }
     NodeContext* context() override { return m_context; }
-    ChainstateManager& chainman() { return *Assert(m_node.chainman); }
     void setContext(NodeContext* context) override
     {
         m_context = context;
@@ -731,7 +736,6 @@ public:
         m_llmq.setContext(context);
         m_masternodeSync.setContext(context);
     }
-    ChainstateManager& chainman() { return *Assert(m_context->chainman); }
     NodeContext* m_context{nullptr};
 };
 
@@ -851,22 +855,33 @@ public:
 
 class ChainImpl : public Chain
 {
+private:
+    ChainstateManager& chainman() { return *Assert(m_node.chainman); }
 public:
     explicit ChainImpl(NodeContext& node) : m_node(node) {}
     std::optional<int> getHeight() override
     {
-        const int height{WITH_LOCK(::cs_main, return Assert(m_node.chainman)->ActiveChain().Height())};
-        return height >= 0 ? std::optional{height} : std::nullopt;
+        LOCK(::cs_main);
+        const CChain& active = Assert(m_node.chainman)->ActiveChain();
+        int height = active.Height();
+        if (height >= 0) {
+            return height;
+        }
+        return std::nullopt;
     }
     uint256 getBlockHash(int height) override
     {
         LOCK(::cs_main);
-        return Assert(Assert(m_node.chainman)->ActiveChain()[height])->GetBlockHash();
+        const CChain& active = Assert(m_node.chainman)->ActiveChain();
+        CBlockIndex* block = active[height];
+        assert(block != nullptr);
+        return block->GetBlockHash();
     }
     bool haveBlockOnDisk(int height) override
     {
         LOCK(::cs_main);
-        const CBlockIndex* block{Assert(m_node.chainman)->ActiveChain()[height]};
+        const CChain& active = Assert(m_node.chainman)->ActiveChain();
+        CBlockIndex* block = active[height];
         return block && ((block->nStatus & BLOCK_HAVE_DATA) != 0) && block->nTx > 0;
     }
     std::optional<int> findFork(const uint256& hash, std::optional<int>* height) override
@@ -902,7 +917,8 @@ public:
     std::optional<int> findLocatorFork(const CBlockLocator& locator) override
     {
         LOCK(::cs_main);
-        if (const CBlockIndex* fork = chainman().ActiveChainstate().FindForkInGlobalIndex(locator)) {
+        const CChainState& active = Assert(m_node.chainman)->ActiveChainstate();
+        if (const CBlockIndex* fork = active.FindForkInGlobalIndex(locator)) {
             return fork->nHeight;
         }
         return std::nullopt;
@@ -936,7 +952,8 @@ public:
     bool findBlock(const uint256& hash, const FoundBlock& block) override
     {
         WAIT_LOCK(cs_main, lock);
-        return FillBlock(chainman().m_blockman.LookupBlockIndex(hash), block, lock, chainman().ActiveChain());
+        const CChain& active = Assert(m_node.chainman)->ActiveChain();
+        return FillBlock(m_node.chainman->m_blockman.LookupBlockIndex(hash), block, lock, active);
     }
     bool findFirstBlockWithTimeAndHeight(int64_t min_time, int min_height, const FoundBlock& block) override
     {
@@ -958,10 +975,11 @@ public:
     bool findAncestorByHash(const uint256& block_hash, const uint256& ancestor_hash, const FoundBlock& ancestor_out) override
     {
         WAIT_LOCK(cs_main, lock);
-        const CBlockIndex* block = chainman().m_blockman.LookupBlockIndex(block_hash);
-        const CBlockIndex* ancestor = chainman().m_blockman.LookupBlockIndex(ancestor_hash);
+        const CChain& active = Assert(m_node.chainman)->ActiveChain();
+        const CBlockIndex* block = m_node.chainman->m_blockman.LookupBlockIndex(block_hash);
+        const CBlockIndex* ancestor = m_node.chainman->m_blockman.LookupBlockIndex(ancestor_hash);
         if (block && ancestor && block->GetAncestor(ancestor->nHeight) != ancestor) ancestor = nullptr;
-        return FillBlock(ancestor, ancestor_out, lock, chainman().ActiveChain());
+        return FillBlock(ancestor, ancestor_out, lock, active);
     }
     bool findCommonAncestor(const uint256& block_hash1, const uint256& block_hash2, const FoundBlock& ancestor_out, const FoundBlock& block1_out, const FoundBlock& block2_out) override
     {
@@ -1091,7 +1109,11 @@ public:
     }
     void waitForNotificationsIfTipChanged(const uint256& old_tip) override
     {
-        if (!old_tip.IsNull() && old_tip == WITH_LOCK(::cs_main, return chainman().ActiveChain().Tip()->GetBlockHash())) return;
+        if (!old_tip.IsNull()) {
+            LOCK(::cs_main);
+            const CChain& active = Assert(m_node.chainman)->ActiveChain();
+            if (old_tip == active.Tip()->GetBlockHash()) return;
+        }
         SyncWithValidationInterfaceQueue();
     }
     std::unique_ptr<Handler> handleRpc(const CRPCCommand& command) override
