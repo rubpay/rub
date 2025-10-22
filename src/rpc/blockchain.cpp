@@ -1493,7 +1493,7 @@ RPCHelpMan getblockchaininfo()
                 {RPCResult::Type::NUM, "pruneheight", /*optional=*/true, "height of the last block pruned, plus one (only present if pruning is enabled)"},
                 {RPCResult::Type::BOOL, "automatic_pruning", /*optional=*/true, "whether automatic pruning is enabled (only present if pruning is enabled)"},
                 {RPCResult::Type::NUM, "prune_target_size", /*optional=*/true, "the target size used by pruning (only present if automatic pruning is enabled)"},
-                {RPCResult::Type::OBJ_DYN, "softforks", "(DEPRECATED, returned only if config option -deprecatedrpc=softforks is passed) status of softforks in progress",
+                {RPCResult::Type::OBJ_DYN, "softforks", "Status of softforks in progress",
                 {
                     {RPCResult::Type::OBJ, "xxxx", "name of the softfork",
                         RPCHelpForDeployment
@@ -1546,11 +1546,10 @@ RPCHelpMan getblockchaininfo()
         }
     }
 
-    if (IsDeprecatedRPCEnabled("softforks")) {
-        const auto ehf_signals{CHECK_NONFATAL(node.mnhf_manager)->GetSignalsStage(&tip)};
-        const Consensus::Params& consensusParams = Params().GetConsensus();
-        obj.pushKV("softforks", DeploymentInfo(&tip, ehf_signals, consensusParams));
-    }
+    // TODO: Must be gated behind -deprecatedrpc=softforks in v24
+    const auto ehf_signals{CHECK_NONFATAL(node.mnhf_manager)->GetSignalsStage(&tip)};
+    const Consensus::Params& consensusParams = Params().GetConsensus();
+    obj.pushKV("softforks", DeploymentInfo(&tip, ehf_signals, consensusParams));
 
     obj.pushKV("warnings", GetWarnings(false).original);
     return obj;
