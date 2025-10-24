@@ -22,6 +22,8 @@
 
 #include <string_view>
 #include <unordered_map>
+#include <atomic>
+#include <condition_variable>
 
 class CActiveMasternodeManager;
 class CChainState;
@@ -175,6 +177,7 @@ private:
     FastRandomContext rnd GUARDED_BY(cs_pending);
 
     int64_t lastCleanupTime{0};
+    std::chrono::steady_clock::time_point lastCleanupTimeSteady{};
 
     mutable Mutex cs_listeners;
     std::vector<CRecoveredSigsListener*> recoveredSigsListeners GUARDED_BY(cs_listeners);
@@ -236,13 +239,17 @@ public:
 private:
     std::thread workThread;
     CThreadInterrupt workInterrupt;
+    // Event to wake the worker thread when new work arrives
+    Mutex workMutex;
+    std::condition_variable_any workCv;
+    std::atomic<uint64_t> workEpoch{0};
     void WorkThreadMain(PeerManager& peerman) EXCLUSIVE_LOCKS_REQUIRED(!cs_pending, !cs_listeners);
-    ;
 
 public:
     void StartWorkerThread(PeerManager& peerman);
     void StopWorkerThread();
     void InterruptWorkerThread();
+    void NotifyWorker() { workEpoch.fetch_add(1, std::memory_order_acq_rel); workCv.notify_one(); }
 };
 
 template<typename NodesContainer, typename Continue, typename Callback>

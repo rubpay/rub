@@ -26,6 +26,7 @@
 #include <unordered_map>
 #include <utility>
 #include <vector>
+#include <condition_variable>
 
 class CNode;
 class CConnman;
@@ -209,12 +210,9 @@ public:
 
     T& GetOrAdd(const SigShareKey& k)
     {
-        T* v = Get(k);
-        if (!v) {
-            Add(k, T());
-            v = Get(k);
-        }
-        return *v;
+        auto& m = internalMap[k.first]; // Get or create outer map entry
+        auto result = m.emplace(k.second, T()); // Try to insert, returns pair<iterator, bool>
+        return result.first->second; // Return reference to the value (new or existing)
     }
 
     const T* GetFirst() const
@@ -354,7 +352,7 @@ public:
     CSigShare sigShare;
     CQuorumCPtr quorum;
 
-    int64_t nextAttemptTime{0};
+    std::chrono::steady_clock::time_point nextAttemptTime{};
     int attempt{0};
 };
 
@@ -379,6 +377,10 @@ private:
 
     std::thread workThread;
     CThreadInterrupt workInterrupt;
+    // Event to wake the worker thread when new work arrives
+    Mutex workMutex;
+    std::condition_variable_any workCv;
+    std::atomic<uint64_t> workEpoch{0};
 
     SigShareMap<CSigShare> sigShares GUARDED_BY(cs);
     Uint256HashMap<CSignedSession> signedSessions GUARDED_BY(cs);
@@ -409,6 +411,7 @@ private:
     const CSporkManager& m_sporkman;
 
     int64_t lastCleanupTime{0};
+    std::chrono::steady_clock::time_point lastCleanupTimeSteady{};
     std::atomic<uint32_t> recoveredSigsCounter{0};
 
 public:
@@ -486,8 +489,10 @@ private:
     void CollectSigSharesToAnnounce(const CConnman& connman,
                                     std::unordered_map<NodeId, Uint256HashMap<CSigSharesInv>>& sigSharesToAnnounce)
         EXCLUSIVE_LOCKS_REQUIRED(cs);
-    void SignPendingSigShares(const CConnman& connman, PeerManager& peerman) EXCLUSIVE_LOCKS_REQUIRED(!cs_pendingSigns);
+    void SignPendingSigShares(const CConnman& connman, PeerManager& peerman)
+        EXCLUSIVE_LOCKS_REQUIRED(!cs_pendingSigns);
     void WorkThreadMain(CConnman& connman, PeerManager& peerman) EXCLUSIVE_LOCKS_REQUIRED(!cs_pendingSigns);
+    void NotifyWorker();
 };
 } // namespace llmq
 

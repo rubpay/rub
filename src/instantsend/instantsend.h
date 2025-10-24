@@ -20,6 +20,7 @@
 #include <atomic>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 class CBlockIndex;
 class CChainState;
@@ -34,6 +35,11 @@ struct LLMQParams;
 
 namespace instantsend {
 class InstantSendSigner;
+
+struct PendingISLockFromPeer {
+    NodeId node_id;
+    InstantSendLockPtr islock;
+};
 
 struct PendingState {
     bool m_pending_work{false};
@@ -63,12 +69,16 @@ private:
 
     std::thread workThread;
     CThreadInterrupt workInterrupt;
+    // Event to wake the worker thread when new work arrives
+    Mutex workMutex;
+    std::condition_variable_any workCv;
+    std::atomic<uint64_t> workEpoch{0};
 
     mutable Mutex cs_pendingLocks;
     // Incoming and not verified yet
-    Uint256HashMap<std::pair<NodeId, instantsend::InstantSendLockPtr>> pendingInstantSendLocks GUARDED_BY(cs_pendingLocks);
+    Uint256HashMap<instantsend::PendingISLockFromPeer> pendingInstantSendLocks GUARDED_BY(cs_pendingLocks);
     // Tried to verify but there is no tx yet
-    Uint256HashMap<std::pair<NodeId, instantsend::InstantSendLockPtr>> pendingNoTxInstantSendLocks GUARDED_BY(cs_pendingLocks);
+    Uint256HashMap<instantsend::PendingISLockFromPeer> pendingNoTxInstantSendLocks GUARDED_BY(cs_pendingLocks);
 
     // TXs which are neither IS locked nor ChainLocked. We use this to determine for which TXs we need to retry IS
     // locking of child TXs
@@ -104,14 +114,14 @@ public:
 
     void Start(PeerManager& peerman);
     void Stop();
-    void InterruptWorkerThread() { workInterrupt(); };
+    void InterruptWorkerThread() { workInterrupt(); workCv.notify_all(); };
 
 private:
     instantsend::PendingState ProcessPendingInstantSendLocks()
         EXCLUSIVE_LOCKS_REQUIRED(!cs_nonLocked, !cs_pendingLocks, !cs_pendingRetry);
 
     Uint256HashSet ProcessPendingInstantSendLocks(const Consensus::LLMQParams& llmq_params, int signOffset, bool ban,
-                                                  const Uint256HashMap<std::pair<NodeId, instantsend::InstantSendLockPtr>>& pend,
+                                                  const std::vector<std::pair<uint256, instantsend::PendingISLockFromPeer>>& pend,
                                                   std::vector<std::pair<NodeId, MessageProcessingResult>>& peer_activity)
         EXCLUSIVE_LOCKS_REQUIRED(!cs_nonLocked, !cs_pendingLocks, !cs_pendingRetry);
     MessageProcessingResult ProcessInstantSendLock(NodeId from, const uint256& hash,
@@ -133,6 +143,10 @@ private:
 
     void WorkThreadMain(PeerManager& peerman)
         EXCLUSIVE_LOCKS_REQUIRED(!cs_nonLocked, !cs_pendingLocks, !cs_pendingRetry);
+    void NotifyWorker() {
+        workEpoch.fetch_add(1, std::memory_order_acq_rel);
+        workCv.notify_one();
+    }
 
     void HandleFullyConfirmedBlock(const CBlockIndex* pindex)
         EXCLUSIVE_LOCKS_REQUIRED(!cs_nonLocked, !cs_pendingRetry);
