@@ -91,6 +91,7 @@ private:
 public:
     CInstantSendManager() = delete;
     CInstantSendManager(const CInstantSendManager&) = delete;
+    CInstantSendManager& operator=(const CInstantSendManager&) = delete;
     explicit CInstantSendManager(CChainLocksHandler& _clhandler, CChainState& chainstate, CQuorumManager& _qman,
                                  CSigningManager& _sigman, CSporkManager& sporkman, CTxMemPool& _mempool,
                                  const CMasternodeSync& mn_sync, bool unitTests, bool fWipe);

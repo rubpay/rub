@@ -76,11 +76,11 @@ CGovernanceManager::CGovernanceManager(CMasternodeMetaMan& mn_metaman, CNetFulfi
     m_chainman{chainman},
     m_dmnman{dmnman},
     m_mn_sync{mn_sync},
-    nTimeLastDiff(0),
-    nCachedBlockHeight(0),
-    mapPostponedObjects(),
-    fRateChecksEnabled(true),
-    votedFundingYesTriggerHash(std::nullopt),
+    nTimeLastDiff{0},
+    nCachedBlockHeight{0},
+    mapPostponedObjects{},
+    fRateChecksEnabled{true},
+    votedFundingYesTriggerHash{std::nullopt},
     mapTrigger{}
 {
 }
