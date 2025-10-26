@@ -33,12 +33,14 @@ void CEvoDBScopedCommitter::Rollback()
 }
 
 CEvoDB::CEvoDB(size_t nCacheSize, bool fMemory, bool fWipe) :
-    db(fMemory ? "" : (gArgs.GetDataDirNet() / "evodb"), nCacheSize, fMemory, fWipe),
-    rootBatch(db),
-    rootDBTransaction(db, rootBatch),
-    curDBTransaction(rootDBTransaction, rootDBTransaction)
+    db{fMemory ? "" : (gArgs.GetDataDirNet() / "evodb"), nCacheSize, fMemory, fWipe},
+    rootBatch{db},
+    rootDBTransaction{db, rootBatch},
+    curDBTransaction{rootDBTransaction, rootDBTransaction}
 {
 }
+
+CEvoDB::~CEvoDB() = default;
 
 void CEvoDB::CommitCurTransaction()
 {

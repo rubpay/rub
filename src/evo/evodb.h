@@ -46,7 +46,11 @@ private:
     CurTransaction curDBTransaction;
 
 public:
+    CEvoDB() = delete;
+    CEvoDB(const CEvoDB&) = delete;
+    CEvoDB& operator=(const CEvoDB&) = delete;
     explicit CEvoDB(size_t nCacheSize, bool fMemory = false, bool fWipe = false);
+    ~CEvoDB();
 
     std::unique_ptr<CEvoDBScopedCommitter> BeginTransaction() EXCLUSIVE_LOCKS_REQUIRED(!cs)
     {
