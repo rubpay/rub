@@ -125,14 +125,14 @@ std::ostream& operator<<(std::ostream& os, const uint256& num)
 
 void DashChainstateSetup(ChainstateManager& chainman,
                          NodeContext& node,
-                         bool fReset,
-                         bool fReindexChainState,
+                         bool llmq_dbs_in_memory,
+                         bool llmq_dbs_wipe,
                          const Consensus::Params& consensus_params)
 {
     DashChainstateSetup(chainman, *Assert(node.govman.get()), *Assert(node.mn_metaman.get()), *Assert(node.mn_sync.get()),
                         *Assert(node.sporkman.get()), node.mn_activeman, node.chain_helper, node.cpoolman, node.dmnman,
                         node.evodb, node.mnhf_manager, node.llmq_ctx, Assert(node.mempool.get()), node.args->GetDataDirNet(),
-                        fReset, fReindexChainState, consensus_params);
+                        llmq_dbs_in_memory, llmq_dbs_wipe, consensus_params);
 }
 
 void DashChainstateSetupClose(NodeContext& node)
@@ -331,7 +331,8 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
                                            m_cache_sizes.coins_db,
                                            m_cache_sizes.coins,
                                            /*block_tree_db_in_memory=*/true,
-                                           /*coins_db_in_memory=*/true);
+                                           /*coins_db_in_memory=*/true,
+                                           /*dash_dbs_in_memory=*/true);
     assert(!maybe_load_error.has_value());
 
     auto maybe_verify_error = VerifyLoadedChainstate(
