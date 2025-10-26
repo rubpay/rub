@@ -7,6 +7,7 @@
 
 #include <hash.h>
 #include <primitives/transaction.h>
+#include <span.h>
 #include <uint256.h>
 #include <util/string.h>
 
@@ -91,7 +92,7 @@ public:
         UpdateHash();
     }
 
-    void SetSignature(const std::vector<unsigned char>& vchSigIn) { vchSig = vchSigIn; }
+    void SetSignature(Span<const uint8_t> vchSigIn) { vchSig.assign(vchSigIn.begin(), vchSigIn.end()); }
 
     bool CheckSignature(const CKeyID& keyID) const;
     bool CheckSignature(const CBLSPublicKey& pubKey) const;

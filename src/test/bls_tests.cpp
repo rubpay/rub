@@ -2,6 +2,7 @@
 // Distributed under the MIT software license, see the accompanying
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
+#include <span.h>
 #include <bls/bls.h>
 #include <bls/bls_batchverifier.h>
 #include <clientversion.h>
@@ -591,6 +592,88 @@ BOOST_AUTO_TEST_CASE(test_get_hash_consistency)
     uint256 hash1 = lazy1.GetHash();
     uint256 hash2 = lazy2.GetHash();
     BOOST_CHECK(hash1 == hash2);
+}
+
+BOOST_AUTO_TEST_CASE(bls_tobytes_vs_tobytevector_signature)
+{
+    // Test that ToBytes() and ToByteVector() produce identical results for signatures
+    bls::bls_legacy_scheme.store(false);
+
+    CBLSSecretKey sk;
+    sk.MakeNewKey();
+    auto sig = sk.Sign(uint256::ONE, false);
+
+    auto bytes_array = sig.ToBytes(false);
+    auto bytes_vector = sig.ToByteVector(false);
+
+    BOOST_CHECK_EQUAL(bytes_array.size(), BLS_CURVE_SIG_SIZE);
+    BOOST_CHECK_EQUAL(bytes_vector.size(), BLS_CURVE_SIG_SIZE);
+    BOOST_CHECK(std::equal(bytes_array.begin(), bytes_array.end(), bytes_vector.begin()));
+}
+
+BOOST_AUTO_TEST_CASE(bls_tobytes_vs_tobytevector_pubkey)
+{
+    // Test that ToBytes() and ToByteVector() produce identical results for public keys
+    bls::bls_legacy_scheme.store(false);
+
+    CBLSSecretKey sk;
+    sk.MakeNewKey();
+    auto pk = sk.GetPublicKey();
+
+    auto bytes_array = pk.ToBytes(false);
+    auto bytes_vector = pk.ToByteVector(false);
+
+    BOOST_CHECK_EQUAL(bytes_array.size(), BLS_CURVE_PUBKEY_SIZE);
+    BOOST_CHECK_EQUAL(bytes_vector.size(), BLS_CURVE_PUBKEY_SIZE);
+    BOOST_CHECK(std::equal(bytes_array.begin(), bytes_array.end(), bytes_vector.begin()));
+}
+
+BOOST_AUTO_TEST_CASE(bls_tobytes_vs_tobytevector_seckey)
+{
+    // Test that ToBytes() and ToByteVector() produce identical results for secret keys
+    bls::bls_legacy_scheme.store(false);
+
+    CBLSSecretKey sk;
+    sk.MakeNewKey();
+
+    auto bytes_array = sk.ToBytes(false);
+    auto bytes_vector = sk.ToByteVector(false);
+
+    BOOST_CHECK_EQUAL(bytes_array.size(), BLS_CURVE_SECKEY_SIZE);
+    BOOST_CHECK_EQUAL(bytes_vector.size(), BLS_CURVE_SECKEY_SIZE);
+    BOOST_CHECK(std::equal(bytes_array.begin(), bytes_array.end(), bytes_vector.begin()));
+}
+
+BOOST_AUTO_TEST_CASE(bls_signature_array_serialization)
+{
+    // Test that BLS signatures serialize correctly with std::array
+    bls::bls_legacy_scheme.store(false);
+
+    CBLSSecretKey sk;
+    sk.MakeNewKey();
+    auto sig = sk.Sign(uint256::ONE, false);
+
+    // Serialize using standard serialization
+    CDataStream ss(SER_NETWORK, PROTOCOL_VERSION);
+    ss << sig;
+
+    // Deserialize
+    CBLSSignature sig2;
+    ss >> sig2;
+
+    BOOST_CHECK(sig == sig2);
+
+    // Verify the serialized size is exactly BLS_CURVE_SIG_SIZE (no size prefix)
+    CDataStream ss2(SER_NETWORK, PROTOCOL_VERSION);
+    ss2 << sig;
+    BOOST_CHECK_EQUAL(ss2.size(), BLS_CURVE_SIG_SIZE);
+
+    // Test array assignment from ToBytes
+    std::array<uint8_t, BLS_CURVE_SIG_SIZE> sig_array = sig.ToBytes(false);
+
+    // Construct signature from array via Span
+    CBLSSignature sig3(MakeUCharSpan(sig_array), false);
+    BOOST_CHECK(sig == sig3);
 }
 
 BOOST_AUTO_TEST_SUITE_END()
