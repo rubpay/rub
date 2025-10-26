@@ -89,6 +89,8 @@ private:
     Uint256HashMap<int64_t> timingsTxSeen GUARDED_BY(cs_timingsTxSeen);
 
 public:
+    CInstantSendManager() = delete;
+    CInstantSendManager(const CInstantSendManager&) = delete;
     explicit CInstantSendManager(CChainLocksHandler& _clhandler, CChainState& chainstate, CQuorumManager& _qman,
                                  CSigningManager& _sigman, CSporkManager& sporkman, CTxMemPool& _mempool,
                                  const CMasternodeSync& mn_sync, bool unitTests, bool fWipe);

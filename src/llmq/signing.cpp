@@ -333,11 +333,13 @@ void CRecoveredSigsDb::CleanupOldVotes(int64_t maxAge)
 //////////////////
 
 CSigningManager::CSigningManager(const CChainState& chainstate, const CQuorumManager& _qman, bool fMemory, bool fWipe) :
-    db(fMemory, fWipe),
-    m_chainstate(chainstate),
-    qman(_qman)
+    db{fMemory, fWipe},
+    m_chainstate{chainstate},
+    qman{_qman}
 {
 }
+
+CSigningManager::~CSigningManager() = default;
 
 bool CSigningManager::AlreadyHave(const CInv& inv) const
 {

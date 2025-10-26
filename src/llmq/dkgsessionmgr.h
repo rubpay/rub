@@ -78,11 +78,14 @@ private:
     mutable std::map<ContributionsCacheKey, ContributionsCacheEntry> contributionsCache GUARDED_BY(contributionsCacheCs);
 
 public:
-    CDKGSessionManager(CBLSWorker& _blsWorker, CChainState& chainstate, CDeterministicMNManager& dmnman,
-                       CDKGDebugManager& _dkgDebugManager, CMasternodeMetaMan& mn_metaman,
-                       CQuorumBlockProcessor& _quorumBlockProcessor, CQuorumSnapshotManager& qsnapman,
-                       const CActiveMasternodeManager* const mn_activeman, const CSporkManager& sporkman,
-                       bool unitTests, bool fWipe);
+    CDKGSessionManager() = delete;
+    CDKGSessionManager(const CDKGSessionManager&) = delete;
+    CDKGSessionManager& operator=(const CDKGSessionManager&) = delete;
+    explicit CDKGSessionManager(CBLSWorker& _blsWorker, CChainState& chainstate, CDeterministicMNManager& dmnman,
+                                CDKGDebugManager& _dkgDebugManager, CMasternodeMetaMan& mn_metaman,
+                                CQuorumBlockProcessor& _quorumBlockProcessor, CQuorumSnapshotManager& qsnapman,
+                                const CActiveMasternodeManager* const mn_activeman, const CSporkManager& sporkman,
+                                bool unitTests, bool fWipe);
     ~CDKGSessionManager();
 
     void StartThreads(CConnman& connman, PeerManager& peerman);

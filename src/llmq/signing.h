@@ -180,7 +180,11 @@ private:
     std::vector<CRecoveredSigsListener*> recoveredSigsListeners GUARDED_BY(cs_listeners);
 
 public:
-    CSigningManager(const CChainState& chainstate, const CQuorumManager& _qman, bool fMemory, bool fWipe);
+    CSigningManager() = delete;
+    CSigningManager(const CSigningManager&) = delete;
+    CSigningManager& operator=(const CSigningManager&) = delete;
+    explicit CSigningManager(const CChainState& chainstate, const CQuorumManager& _qman, bool fMemory, bool fWipe);
+    ~CSigningManager();
 
     bool AlreadyHave(const CInv& inv) const EXCLUSIVE_LOCKS_REQUIRED(!cs_pending);
     bool GetRecoveredSigForGetData(const uint256& hash, CRecoveredSig& ret) const;

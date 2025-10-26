@@ -34,10 +34,11 @@ struct LLMQContext {
 public:
     LLMQContext() = delete;
     LLMQContext(const LLMQContext&) = delete;
-    LLMQContext(ChainstateManager& chainman, CDeterministicMNManager& dmnman, CEvoDB& evo_db,
-                CMasternodeMetaMan& mn_metaman, CMNHFManager& mnhfman, CSporkManager& sporkman, CTxMemPool& mempool,
-                const CActiveMasternodeManager* const mn_activeman, const CMasternodeSync& mn_sync, bool unit_tests,
-                bool wipe);
+    LLMQContext& operator=(const LLMQContext&) = delete;
+    explicit LLMQContext(ChainstateManager& chainman, CDeterministicMNManager& dmnman, CEvoDB& evo_db,
+                         CMasternodeMetaMan& mn_metaman, CMNHFManager& mnhfman, CSporkManager& sporkman,
+                         CTxMemPool& mempool, const CActiveMasternodeManager* const mn_activeman,
+                         const CMasternodeSync& mn_sync, bool unit_tests, bool wipe);
     ~LLMQContext();
 
     void Interrupt();

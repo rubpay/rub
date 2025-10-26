@@ -34,14 +34,14 @@ CDKGSessionManager::CDKGSessionManager(CBLSWorker& _blsWorker, CChainState& chai
                                        CQuorumBlockProcessor& _quorumBlockProcessor, CQuorumSnapshotManager& qsnapman,
                                        const CActiveMasternodeManager* const mn_activeman,
                                        const CSporkManager& sporkman, bool unitTests, bool fWipe) :
-    db(std::make_unique<CDBWrapper>(unitTests ? "" : (gArgs.GetDataDirNet() / "llmq/dkgdb"), 1 << 20, unitTests, fWipe)),
-    blsWorker(_blsWorker),
-    m_chainstate(chainstate),
-    m_dmnman(dmnman),
-    dkgDebugManager(_dkgDebugManager),
-    quorumBlockProcessor(_quorumBlockProcessor),
-    m_qsnapman(qsnapman),
-    spork_manager(sporkman)
+    db{std::make_unique<CDBWrapper>(unitTests ? "" : (gArgs.GetDataDirNet() / "llmq/dkgdb"), 1 << 20, unitTests, fWipe)},
+    blsWorker{_blsWorker},
+    m_chainstate{chainstate},
+    m_dmnman{dmnman},
+    dkgDebugManager{_dkgDebugManager},
+    quorumBlockProcessor{_quorumBlockProcessor},
+    m_qsnapman{qsnapman},
+    spork_manager{sporkman}
 {
     if (mn_activeman == nullptr && !IsWatchQuorumsEnabled()) {
         // Regular nodes do not care about any DKG internals, bail out
