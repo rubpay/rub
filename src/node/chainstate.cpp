@@ -71,9 +71,8 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
 
     LOCK(cs_main);
 
-    int64_t nEvoDbCache{64 * 1024 * 1024}; // TODO
     evodb.reset();
-    evodb = std::make_unique<CEvoDB>(nEvoDbCache, false, fReset || fReindexChainState);
+    evodb = std::make_unique<CEvoDB>(/*fMemory=*/false, /*fWipe=*/fReset || fReindexChainState);
 
     mnhf_manager.reset();
     mnhf_manager = std::make_unique<CMNHFManager>(*evodb);

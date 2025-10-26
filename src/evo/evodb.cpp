@@ -32,10 +32,10 @@ void CEvoDBScopedCommitter::Rollback()
     evoDB.RollbackCurTransaction();
 }
 
-CEvoDB::CEvoDB(size_t nCacheSize, bool fMemory, bool fWipe) :
-    db{fMemory ? "" : (gArgs.GetDataDirNet() / "evodb"), nCacheSize, fMemory, fWipe},
-    rootBatch{db},
-    rootDBTransaction{db, rootBatch},
+CEvoDB::CEvoDB(bool fMemory, bool fWipe) :
+    db{std::make_unique<CDBWrapper>(fMemory ? "" : (gArgs.GetDataDirNet() / "evodb"), 64 << 20, fMemory, fWipe)},
+    rootBatch{*db},
+    rootDBTransaction{*db, rootBatch},
     curDBTransaction{rootDBTransaction, rootDBTransaction}
 {
 }
@@ -59,7 +59,7 @@ bool CEvoDB::CommitRootTransaction()
     LOCK(cs);
     assert(curDBTransaction.IsClean());
     rootDBTransaction.Commit();
-    bool ret = db.WriteBatch(rootBatch);
+    bool ret = db->WriteBatch(rootBatch);
     rootBatch.Clear();
     return ret;
 }

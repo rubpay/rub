@@ -214,7 +214,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName, const std::ve
     m_node.connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman); // Deterministic randomness for tests.
 
     fCheckBlockIndex = true;
-    m_node.evodb = std::make_unique<CEvoDB>(1 << 20, true, true);
+    m_node.evodb = std::make_unique<CEvoDB>(/*fMemory=*/true, /*fWipe=*/true);
     m_node.mnhf_manager = std::make_unique<CMNHFManager>(*m_node.evodb);
     m_node.cpoolman = std::make_unique<CCreditPoolManager>(*m_node.evodb);
     static bool noui_connected = false;
