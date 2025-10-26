@@ -147,6 +147,12 @@ public:
     }
 };
 
+struct WalletDestination
+{
+    CTxDestination dest;
+    std::optional<bool> internal;
+};
+
 enum class PathDerivationType
 {
     BIP44_External,
@@ -188,8 +194,14 @@ public:
       */
     virtual bool TopUp(unsigned int size = 0) { return false; }
 
-    //! Mark unused addresses as being used
-    virtual void MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time) {}
+    /** Mark unused addresses as being used
+     * Affects all keys up to and including the one determined by provided script.
+     *
+     * @param script determines the last key to mark as used
+     *
+     * @return All of the addresses affected
+     */
+    virtual std::vector<WalletDestination> MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time) { return {}; }
 
     /* Returns true if HD is enabled */
     virtual bool IsHDEnabled() const { return false; }
@@ -338,7 +350,7 @@ public:
 
     bool TopUp(unsigned int size = 0) override;
 
-    void MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time) override;
+    std::vector<WalletDestination> MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time) override;
 
     //! Upgrade stored CKeyMetadata objects to store key origin info as KeyOriginInfo
     void UpgradeKeyMetadata();
@@ -485,9 +497,13 @@ public:
     // void LearnAllRelatedScripts(const CPubKey& key);
 
     /**
-     * Marks all keys in the keypool up to and including reserve_key as used.
+     * Marks all keys in the keypool up to and including the provided key as used.
+     *
+     * @param keypool_id determines the last key to mark as used
+     *
+     * @return All affected keys
      */
-    void MarkReserveKeysAsUsed(int64_t keypool_id) EXCLUSIVE_LOCKS_REQUIRED(cs_KeyStore);
+    std::vector<CKeyPool> MarkReserveKeysAsUsed(int64_t keypool_id) EXCLUSIVE_LOCKS_REQUIRED(cs_KeyStore);
     const std::map<CKeyID, int64_t>& GetAllReserveKeys() const { return m_pool_key_to_index; }
 
     std::set<CKeyID> GetKeys() const override;
@@ -512,8 +528,6 @@ public:
 class DescriptorScriptPubKeyMan : public ScriptPubKeyMan
 {
 private:
-    WalletDescriptor m_wallet_descriptor GUARDED_BY(cs_desc_man);
-
     using ScriptPubKeyMap = std::map<CScript, int32_t>; // Map of scripts to descriptor range index
     using PubKeyMap = std::map<CPubKey, int32_t>; // Map of pubkeys involved in scripts to descriptor range index
     using CryptedKeyMap = std::map<CKeyID, std::pair<CPubKey, std::vector<unsigned char>>>;
@@ -550,6 +564,9 @@ private:
     // Fetch the SigningProvider for a given index and optionally include private keys. Called by the above functions.
     std::unique_ptr<FlatSigningProvider> GetSigningProvider(int32_t index, bool include_private = false) const EXCLUSIVE_LOCKS_REQUIRED(cs_desc_man);
 
+protected:
+  WalletDescriptor m_wallet_descriptor GUARDED_BY(cs_desc_man);
+
 public:
     DescriptorScriptPubKeyMan(WalletStorage& storage, WalletDescriptor& descriptor)
         :   ScriptPubKeyMan(storage),
@@ -577,12 +594,17 @@ public:
     // (with or without private keys), the "keypool" is a single xpub.
     bool TopUp(unsigned int size = 0) override;
 
-    void MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time) override;
+    std::vector<WalletDestination> MarkUnusedAddresses(WalletBatch &batch, const CScript& script, const std::optional<int64_t>& block_time) override;
 
     bool IsHDEnabled() const override;
 
     //! Setup descriptors based on the given CExtkey
     bool SetupDescriptorGeneration(const CExtKey& master_key, const SecureString& secure_mnemonic, const SecureString& secure_mnemonic_passphrase, PathDerivationType type);
+
+    /** Provide a descriptor at setup time
+    * Returns false if already setup or setup fails, true if setup is successful
+    */
+    bool SetupDescriptor(std::unique_ptr<Descriptor>desc);
 
     bool HavePrivateKeys() const override;
 

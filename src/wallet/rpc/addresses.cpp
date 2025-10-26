@@ -506,7 +506,12 @@ RPCHelpMan getaddressinfo()
         ret.pushKV("desc", InferDescriptor(scriptPubKey, *provider)->ToString());
     }
 
-    DescriptorScriptPubKeyMan* desc_spk_man = dynamic_cast<DescriptorScriptPubKeyMan*>(pwallet->GetScriptPubKeyMan(scriptPubKey));
+    const auto& spk_mans = pwallet->GetScriptPubKeyMans(scriptPubKey);
+    // In most cases there is only one matching ScriptPubKey manager and we can't resolve ambiguity in a better way
+    ScriptPubKeyMan* spk_man{nullptr};
+    if (spk_mans.size()) spk_man = *spk_mans.begin();
+
+    DescriptorScriptPubKeyMan* desc_spk_man = dynamic_cast<DescriptorScriptPubKeyMan*>(spk_man);
     if (desc_spk_man) {
         std::string desc_str;
         if (desc_spk_man->GetDescriptorString(desc_str, /*priv=*/false)) {
@@ -521,7 +526,6 @@ RPCHelpMan getaddressinfo()
 
     ret.pushKV("ischange", ScriptIsChange(*pwallet, scriptPubKey));
 
-    ScriptPubKeyMan* spk_man = pwallet->GetScriptPubKeyMan(scriptPubKey);
     if (spk_man) {
         if (const std::unique_ptr<CKeyMetadata> meta = spk_man->GetMetadata(dest)) {
             ret.pushKV("timestamp", meta->nCreateTime);
@@ -665,4 +669,47 @@ RPCHelpMan listlabels()
 },
     };
 }
+
+#ifdef ENABLE_EXTERNAL_SIGNER
+RPCHelpMan walletdisplayaddress()
+{
+    return RPCHelpMan{"walletdisplayaddress",
+        "Display address on an external signer for verification.",
+        {
+            {"address", RPCArg::Type::STR, RPCArg::Optional::NO, "dash address to display"},
+        },
+        RPCResult{
+            RPCResult::Type::OBJ,"","",
+            {
+                {RPCResult::Type::STR, "address", "The address as confirmed by the signer"},
+            }
+        },
+        RPCExamples{""},
+        [&](const RPCHelpMan& self, const JSONRPCRequest& request) -> UniValue
+        {
+            std::shared_ptr<CWallet> const wallet = GetWalletForJSONRPCRequest(request);
+            if (!wallet) return NullUniValue;
+            CWallet* const pwallet = wallet.get();
+
+            LOCK(pwallet->cs_wallet);
+
+            CTxDestination dest = DecodeDestination(request.params[0].get_str());
+
+            // Make sure the destination is valid
+            if (!IsValidDestination(dest)) {
+                throw JSONRPCError(RPC_INVALID_ADDRESS_OR_KEY, "Invalid address");
+            }
+
+            if (!pwallet->DisplayAddress(dest)) {
+                throw JSONRPCError(RPC_MISC_ERROR, "Failed to display address");
+            }
+
+            UniValue result(UniValue::VOBJ);
+            result.pushKV("address", request.params[0].get_str());
+            return result;
+        }
+    };
+}
+#endif // ENABLE_EXTERNAL_SIGNER
+
 } // namespace wallet

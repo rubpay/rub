@@ -8,9 +8,18 @@
 
 #include <support/allocators/secure.h>
 
-#ifdef HAVE_BOOST_PROCESS
+#ifdef ENABLE_EXTERNAL_SIGNER
+#if defined(__GNUC__)
+// Boost 1.78 requires the following workaround.
+// See: https://github.com/boostorg/process/issues/235
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wnarrowing"
+#endif
 #include <boost/process.hpp>
-#endif // HAVE_BOOST_PROCESS
+#if defined(__GNUC__)
+#pragma GCC diagnostic pop
+#endif
+#endif // ENABLE_EXTERNAL_SIGNER
 
 #include <chainparamsbase.h>
 #include <ctpl_stl.h>
@@ -1389,9 +1398,9 @@ void RenameThreadPool(ctpl::thread_pool& tp, const char* baseName)
     }
 }
 
-#ifdef HAVE_BOOST_PROCESS
 UniValue RunCommandParseJSON(const std::string& str_command, const std::string& str_std_in)
 {
+#ifdef ENABLE_EXTERNAL_SIGNER
     namespace bp = boost::process;
 
     UniValue result_json;
@@ -1423,8 +1432,10 @@ UniValue RunCommandParseJSON(const std::string& str_command, const std::string& 
     if (!result_json.read(result)) throw std::runtime_error("Unable to parse JSON: " + result);
 
     return result_json;
+#else
+    throw std::runtime_error("Compiled without external signing support (required for external signing).");
+#endif // ENABLE_EXTERNAL_SIGNER
 }
-#endif // HAVE_BOOST_PROCESS
 
 void SetupEnvironment()
 {
