@@ -233,7 +233,9 @@ private:
     std::optional<SporkValue> SporkValueIfActive(SporkId nSporkID) const EXCLUSIVE_LOCKS_REQUIRED(cs, !cs_cache);
 
 public:
-    CSporkManager();
+    CSporkManager(const CSporkManager&) = delete;
+    CSporkManager& operator=(const CSporkManager&) = delete;
+    explicit CSporkManager();
     ~CSporkManager();
 
     bool LoadCache();
