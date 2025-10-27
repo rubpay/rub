@@ -50,6 +50,8 @@ private:
     bool is_valid{false};
 
 public:
+    CNetFulfilledRequestManager(const CNetFulfilledRequestManager&) = delete;
+    CNetFulfilledRequestManager& operator=(const CNetFulfilledRequestManager&) = delete;
     explicit CNetFulfilledRequestManager();
     ~CNetFulfilledRequestManager();
 

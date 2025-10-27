@@ -1981,6 +1981,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                               node.mnhf_manager,
                                               node.llmq_ctx,
                                               Assert(node.mempool.get()),
+                                              args.GetDataDirNet(),
                                               fPruneMode,
                                               args.GetBoolArg("-addressindex", DEFAULT_ADDRESSINDEX),
                                               is_governance_enabled,
@@ -1995,6 +1996,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                               cache_sizes.coins,
                                               /*block_tree_db_in_memory=*/false,
                                               /*coins_db_in_memory=*/false,
+                                              /*dash_dbs_in_memory=*/false,
                                               /*shutdown_requested=*/ShutdownRequested,
                                               /*coins_error_cb=*/[]() {
                                                   uiInterface.ThreadSafeMessageBox(
@@ -2355,7 +2357,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
             LOCK(cs_main);
             const auto start{SteadyClock::now()};
             const auto mnList{node.dmnman->GetListAtChainTip()};
-            mnList.ForEachMN(false, [&](auto& dmn) {
+            mnList.ForEachMN(/*onlyValid=*/false, [&](const auto& dmn) {
                 Coin coin;
                 GetUTXOCoin(chainman.ActiveChainstate(), dmn.collateralOutpoint, coin);
             });

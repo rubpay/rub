@@ -211,25 +211,28 @@ CQuorumManager::CQuorumManager(CBLSWorker& _blsWorker, CChainState& chainstate, 
                                CDKGSessionManager& _dkgManager, CEvoDB& _evoDb,
                                CQuorumBlockProcessor& _quorumBlockProcessor, CQuorumSnapshotManager& qsnapman,
                                const CActiveMasternodeManager* const mn_activeman, const CMasternodeSync& mn_sync,
-                               const CSporkManager& sporkman, bool unit_tests, bool wipe) :
-    db(std::make_unique<CDBWrapper>(unit_tests ? "" : (gArgs.GetDataDirNet() / "llmq" / "quorumdb"), 1 << 20,
-                                    unit_tests, wipe)),
-    blsWorker(_blsWorker),
-    m_chainstate(chainstate),
-    m_dmnman(dmnman),
-    dkgManager(_dkgManager),
-    quorumBlockProcessor(_quorumBlockProcessor),
-    m_qsnapman(qsnapman),
-    m_mn_activeman(mn_activeman),
-    m_mn_sync(mn_sync),
-    m_sporkman(sporkman)
+                               const CSporkManager& sporkman, const util::DbWrapperParams& db_params) :
+    db{util::MakeDbWrapper(
+        {db_params.path / "llmq" / "quorumdb", /*cache_size=*/1 << 20, db_params.memory, db_params.wipe})},
+    blsWorker{_blsWorker},
+    m_chainstate{chainstate},
+    m_dmnman{dmnman},
+    dkgManager{_dkgManager},
+    quorumBlockProcessor{_quorumBlockProcessor},
+    m_qsnapman{qsnapman},
+    m_mn_activeman{mn_activeman},
+    m_mn_sync{mn_sync},
+    m_sporkman{sporkman}
 {
     utils::InitQuorumsCache(mapQuorumsCache, false);
     quorumThreadInterrupt.reset();
     MigrateOldQuorumDB(_evoDb);
 }
 
-CQuorumManager::~CQuorumManager() { Stop(); }
+CQuorumManager::~CQuorumManager()
+{
+    Stop();
+}
 
 void CQuorumManager::Start()
 {
@@ -680,9 +683,8 @@ size_t CQuorumManager::GetQuorumRecoveryStartOffset(const CQuorumCPtr pQuorum, c
     auto mns = m_dmnman.GetListForBlock(pIndex);
     std::vector<uint256> vecProTxHashes;
     vecProTxHashes.reserve(mns.GetValidMNsCount());
-    mns.ForEachMN(true, [&](auto& pMasternode) {
-        vecProTxHashes.emplace_back(pMasternode.proTxHash);
-    });
+    mns.ForEachMN(/*onlyValid=*/true,
+                  [&](const auto& pMasternode) { vecProTxHashes.emplace_back(pMasternode.proTxHash); });
     std::sort(vecProTxHashes.begin(), vecProTxHashes.end());
     size_t nIndex{0};
     {

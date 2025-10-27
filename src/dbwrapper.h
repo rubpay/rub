@@ -709,4 +709,35 @@ public:
     }
 };
 
+namespace util {
+struct DbWrapperParams
+{
+    DbWrapperParams() = delete;
+    DbWrapperParams(const fs::path path, size_t cache_size, bool memory, bool wipe) :
+        path{path},
+        cache_size{cache_size},
+        memory{memory},
+        wipe{wipe}
+    {
+    }
+    DbWrapperParams(const fs::path path, bool memory, bool wipe) :
+        path{path},
+        memory{memory},
+        wipe{wipe}
+    {
+    }
+    ~DbWrapperParams() = default;
+
+    const fs::path path{""};
+    const size_t cache_size{1 << 20};
+    const bool memory{false};
+    const bool wipe{false};
+};
+
+static inline std::unique_ptr<CDBWrapper> MakeDbWrapper(const DbWrapperParams& params)
+{
+    return std::make_unique<CDBWrapper>(params.memory ? "" : params.path, params.cache_size, params.memory, params.wipe);
+}
+} // namespace util
+
 #endif // BITCOIN_DBWRAPPER_H

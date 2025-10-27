@@ -76,11 +76,11 @@ CGovernanceManager::CGovernanceManager(CMasternodeMetaMan& mn_metaman, CNetFulfi
     m_chainman{chainman},
     m_dmnman{dmnman},
     m_mn_sync{mn_sync},
-    nTimeLastDiff(0),
-    nCachedBlockHeight(0),
-    mapPostponedObjects(),
-    fRateChecksEnabled(true),
-    votedFundingYesTriggerHash(std::nullopt),
+    nTimeLastDiff{0},
+    nCachedBlockHeight{0},
+    mapPostponedObjects{},
+    fRateChecksEnabled{true},
+    votedFundingYesTriggerHash{std::nullopt},
     mapTrigger{}
 {
 }
@@ -618,9 +618,8 @@ std::vector<CGovernanceVote> CGovernanceManager::GetCurrentVotes(const uint256& 
     const auto tip_mn_list = Assert(m_dmnman)->GetListAtChainTip();
     std::map<COutPoint, CDeterministicMNCPtr> mapMasternodes;
     if (mnCollateralOutpointFilter.IsNull()) {
-        tip_mn_list.ForEachMNShared(false, [&](const CDeterministicMNCPtr& dmn) {
-            mapMasternodes.emplace(dmn->collateralOutpoint, dmn);
-        });
+        tip_mn_list.ForEachMNShared(/*onlyValid=*/false,
+                                    [&](const auto& dmn) { mapMasternodes.emplace(dmn->collateralOutpoint, dmn); });
     } else {
         auto dmn = tip_mn_list.GetMNByCollateral(mnCollateralOutpointFilter);
         if (dmn) {

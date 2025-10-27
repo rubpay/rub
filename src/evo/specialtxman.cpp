@@ -189,7 +189,7 @@ bool CSpecialTxProcessor::BuildNewListFromBlock(const CBlock& block, gsl::not_nu
     // we iterate the oldList here and update the newList
     // this is only valid as long these have not diverged at this point, which is the case as long as we don't add
     // code above this loop that modifies newList
-    oldList.ForEachMN(false, [&pindexPrev, &newList, this](auto& dmn) {
+    oldList.ForEachMN(/*onlyValid=*/false, [&pindexPrev, &newList, this](const auto& dmn) {
         if (!dmn.pdmnState->confirmedHash.IsNull()) {
             // already confirmed
             return;
@@ -473,7 +473,7 @@ bool CSpecialTxProcessor::BuildNewListFromBlock(const CBlock& block, gsl::not_nu
 
     // reset nConsecutivePayments on non-paid EvoNodes
     auto newList2 = newList;
-    newList2.ForEachMN(false, [&](auto& dmn) {
+    newList2.ForEachMN(/*onlyValid=*/false, [&](const auto& dmn) {
         if (dmn.nType != MnType::Evo) return;
         if (payee != nullptr && dmn.proTxHash == payee->proTxHash && !isMNRewardReallocation) return;
         if (dmn.pdmnState->nConsecutivePayments == 0) return;

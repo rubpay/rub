@@ -234,6 +234,8 @@ private:
         SeenBanInventorySize};
 
 public:
+    CMasternodeMetaMan(const CMasternodeMetaMan&) = delete;
+    CMasternodeMetaMan& operator=(const CMasternodeMetaMan&) = delete;
     explicit CMasternodeMetaMan();
     ~CMasternodeMetaMan();
 
