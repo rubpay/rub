@@ -31,6 +31,9 @@ class PeerManager;
 namespace Consensus {
 struct LLMQParams;
 } // namespace Consensus
+namespace util {
+struct DbWrapperParams;
+} // namespace util
 
 namespace instantsend {
 class InstantSendSigner;
@@ -94,7 +97,7 @@ public:
     CInstantSendManager& operator=(const CInstantSendManager&) = delete;
     explicit CInstantSendManager(CChainLocksHandler& _clhandler, CChainState& chainstate, CQuorumManager& _qman,
                                  CSigningManager& _sigman, CSporkManager& sporkman, CTxMemPool& _mempool,
-                                 const CMasternodeSync& mn_sync, bool unitTests, bool fWipe);
+                                 const CMasternodeSync& mn_sync, const util::DbWrapperParams& db_params);
     ~CInstantSendManager();
 
     void ConnectSigner(gsl::not_null<instantsend::InstantSendSigner*> signer)

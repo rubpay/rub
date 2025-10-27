@@ -131,8 +131,8 @@ void DashChainstateSetup(ChainstateManager& chainman,
 {
     DashChainstateSetup(chainman, *Assert(node.govman.get()), *Assert(node.mn_metaman.get()), *Assert(node.mn_sync.get()),
                         *Assert(node.sporkman.get()), node.mn_activeman, node.chain_helper, node.cpoolman, node.dmnman,
-                        node.evodb, node.mnhf_manager, node.llmq_ctx, Assert(node.mempool.get()), fReset, fReindexChainState,
-                        consensus_params);
+                        node.evodb, node.mnhf_manager, node.llmq_ctx, Assert(node.mempool.get()), node.args->GetDataDirNet(),
+                        fReset, fReindexChainState, consensus_params);
 }
 
 void DashChainstateSetupClose(NodeContext& node)
@@ -214,7 +214,7 @@ BasicTestingSetup::BasicTestingSetup(const std::string& chainName, const std::ve
     m_node.connman = std::make_unique<ConnmanTestMsg>(0x1337, 0x1337, *m_node.addrman, *m_node.netgroupman); // Deterministic randomness for tests.
 
     fCheckBlockIndex = true;
-    m_node.evodb = std::make_unique<CEvoDB>(/*fMemory=*/true, /*fWipe=*/true);
+    m_node.evodb = std::make_unique<CEvoDB>(util::DbWrapperParams{m_node.args->GetDataDirNet(), /*memory=*/true, /*wipe=*/true});
     m_node.mnhf_manager = std::make_unique<CMNHFManager>(*m_node.evodb);
     m_node.cpoolman = std::make_unique<CCreditPoolManager>(*m_node.evodb);
     static bool noui_connected = false;
@@ -311,6 +311,7 @@ TestingSetup::TestingSetup(const std::string& chainName, const std::vector<const
                                            m_node.mnhf_manager,
                                            m_node.llmq_ctx,
                                            Assert(m_node.mempool.get()),
+                                           Assert(m_node.args)->GetDataDirNet(),
                                            fPruneMode,
                                            m_args.GetBoolArg("-addressindex", DEFAULT_ADDRESSINDEX),
                                            !m_args.GetBoolArg("-disablegovernance", !DEFAULT_GOVERNANCE_ENABLE),

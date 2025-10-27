@@ -1981,6 +1981,7 @@ bool AppInitMain(NodeContext& node, interfaces::BlockAndHeaderTipInfo* tip_info)
                                               node.mnhf_manager,
                                               node.llmq_ctx,
                                               Assert(node.mempool.get()),
+                                              args.GetDataDirNet(),
                                               fPruneMode,
                                               args.GetBoolArg("-addressindex", DEFAULT_ADDRESSINDEX),
                                               is_governance_enabled,

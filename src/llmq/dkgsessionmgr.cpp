@@ -33,8 +33,8 @@ CDKGSessionManager::CDKGSessionManager(CBLSWorker& _blsWorker, CChainState& chai
                                        CDKGDebugManager& _dkgDebugManager, CMasternodeMetaMan& mn_metaman,
                                        CQuorumBlockProcessor& _quorumBlockProcessor, CQuorumSnapshotManager& qsnapman,
                                        const CActiveMasternodeManager* const mn_activeman,
-                                       const CSporkManager& sporkman, bool unitTests, bool fWipe) :
-    db{std::make_unique<CDBWrapper>(unitTests ? "" : (gArgs.GetDataDirNet() / "llmq/dkgdb"), 1 << 20, unitTests, fWipe)},
+                                       const CSporkManager& sporkman, const util::DbWrapperParams& db_params) :
+    db{util::MakeDbWrapper({db_params.path / "llmq" / "dkgdb", /*cache_size=*/8 << 20, db_params.memory, db_params.wipe})},
     blsWorker{_blsWorker},
     m_chainstate{chainstate},
     m_dmnman{dmnman},

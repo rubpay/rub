@@ -37,6 +37,9 @@ class CEvoDB;
 class CMasternodeSync;
 class CNode;
 class CSporkManager;
+namespace util {
+struct DbWrapperParams;
+} // namespace util
 
 namespace llmq
 {
@@ -263,9 +266,10 @@ public:
     CQuorumManager(const CQuorumManager&) = delete;
     CQuorumManager& operator=(const CQuorumManager&) = delete;
     explicit CQuorumManager(CBLSWorker& _blsWorker, CChainState& chainstate, CDeterministicMNManager& dmnman,
-                            CDKGSessionManager& _dkgManager, CEvoDB& _evoDb, CQuorumBlockProcessor& _quorumBlockProcessor,
-                            CQuorumSnapshotManager& qsnapman, const CActiveMasternodeManager* const mn_activeman,
-                            const CMasternodeSync& mn_sync, const CSporkManager& sporkman, bool unit_tests, bool wipe);
+                            CDKGSessionManager& _dkgManager, CEvoDB& _evoDb,
+                            CQuorumBlockProcessor& _quorumBlockProcessor, CQuorumSnapshotManager& qsnapman,
+                            const CActiveMasternodeManager* const mn_activeman, const CMasternodeSync& mn_sync,
+                            const CSporkManager& sporkman, const util::DbWrapperParams& db_params);
     ~CQuorumManager();
 
     void Start();

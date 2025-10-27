@@ -211,9 +211,9 @@ CQuorumManager::CQuorumManager(CBLSWorker& _blsWorker, CChainState& chainstate, 
                                CDKGSessionManager& _dkgManager, CEvoDB& _evoDb,
                                CQuorumBlockProcessor& _quorumBlockProcessor, CQuorumSnapshotManager& qsnapman,
                                const CActiveMasternodeManager* const mn_activeman, const CMasternodeSync& mn_sync,
-                               const CSporkManager& sporkman, bool unit_tests, bool wipe) :
-    db{std::make_unique<CDBWrapper>(unit_tests ? "" : (gArgs.GetDataDirNet() / "llmq" / "quorumdb"), 1 << 20,
-                                    unit_tests, wipe)},
+                               const CSporkManager& sporkman, const util::DbWrapperParams& db_params) :
+    db{util::MakeDbWrapper(
+        {db_params.path / "llmq" / "quorumdb", /*cache_size=*/1 << 20, db_params.memory, db_params.wipe})},
     blsWorker{_blsWorker},
     m_chainstate{chainstate},
     m_dmnman{dmnman},

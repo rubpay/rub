@@ -9,6 +9,10 @@
 #include <sync.h>
 
 class uint256;
+namespace util {
+struct DbWrapperParams;
+} // namespace util
+
 // "b_b" was used in the initial version of deterministic MN storage
 // "b_b2" was used after compact diffs were introduced
 // "b_b3" was used after masternode type introduction in evoDB
@@ -49,7 +53,7 @@ public:
     CEvoDB() = delete;
     CEvoDB(const CEvoDB&) = delete;
     CEvoDB& operator=(const CEvoDB&) = delete;
-    explicit CEvoDB(bool fMemory, bool fWipe);
+    explicit CEvoDB(const util::DbWrapperParams& db_params);
     ~CEvoDB();
 
     std::unique_ptr<CEvoDBScopedCommitter> BeginTransaction() EXCLUSIVE_LOCKS_REQUIRED(!cs)

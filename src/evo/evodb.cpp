@@ -3,7 +3,6 @@
 // file COPYING or http://www.opensource.org/licenses/mit-license.php.
 
 #include <evo/evodb.h>
-#include <util/system.h>
 
 #include <uint256.h>
 
@@ -32,8 +31,8 @@ void CEvoDBScopedCommitter::Rollback()
     evoDB.RollbackCurTransaction();
 }
 
-CEvoDB::CEvoDB(bool fMemory, bool fWipe) :
-    db{std::make_unique<CDBWrapper>(fMemory ? "" : (gArgs.GetDataDirNet() / "evodb"), 64 << 20, fMemory, fWipe)},
+CEvoDB::CEvoDB(const util::DbWrapperParams& db_params) :
+    db{util::MakeDbWrapper({db_params.path / "evodb", /*cache_size=*/64 << 20, db_params.memory, db_params.wipe})},
     rootBatch{*db},
     rootDBTransaction{*db, rootBatch},
     curDBTransaction{rootDBTransaction, rootDBTransaction}

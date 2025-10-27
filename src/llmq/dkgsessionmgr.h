@@ -33,6 +33,9 @@ class CDKGContribution;
 class CDKGComplaint;
 class CDKGJustification;
 class CDKGPrematureCommitment;
+namespace util {
+struct DbWrapperParams;
+} // namespace util
 
 class UniValue;
 
@@ -85,7 +88,7 @@ public:
                                 CDKGDebugManager& _dkgDebugManager, CMasternodeMetaMan& mn_metaman,
                                 CQuorumBlockProcessor& _quorumBlockProcessor, CQuorumSnapshotManager& qsnapman,
                                 const CActiveMasternodeManager* const mn_activeman, const CSporkManager& sporkman,
-                                bool unitTests, bool fWipe);
+                                const util::DbWrapperParams& db_params);
     ~CDKGSessionManager();
 
     void StartThreads(CConnman& connman, PeerManager& peerman);

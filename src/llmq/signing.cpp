@@ -27,8 +27,8 @@
 
 namespace llmq
 {
-CRecoveredSigsDb::CRecoveredSigsDb(bool fMemory, bool fWipe) :
-        db(std::make_unique<CDBWrapper>(fMemory ? "" : (gArgs.GetDataDirNet() / "llmq/recsigdb"), 8 << 20, fMemory, fWipe))
+CRecoveredSigsDb::CRecoveredSigsDb(const util::DbWrapperParams& db_params) :
+    db{util::MakeDbWrapper({db_params.path / "llmq" / "recsigdb", /*cache_size=*/8 << 20, db_params.memory, db_params.wipe})}
 {
 }
 
@@ -332,8 +332,9 @@ void CRecoveredSigsDb::CleanupOldVotes(int64_t maxAge)
 
 //////////////////
 
-CSigningManager::CSigningManager(const CChainState& chainstate, const CQuorumManager& _qman, bool fMemory, bool fWipe) :
-    db{fMemory, fWipe},
+CSigningManager::CSigningManager(const CChainState& chainstate, const CQuorumManager& _qman,
+                                 const util::DbWrapperParams& db_params) :
+    db{db_params},
     m_chainstate{chainstate},
     qman{_qman}
 {

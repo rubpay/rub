@@ -27,7 +27,10 @@ struct LLMQContext;
 
 namespace Consensus {
 struct Params;
-}
+} // namespace Consensus
+namespace fs {
+class path;
+} // namespace fs
 
 namespace node {
 enum class ChainstateLoadingError {
@@ -90,6 +93,7 @@ std::optional<ChainstateLoadingError> LoadChainstate(bool fReset,
                                                      std::unique_ptr<CMNHFManager>& mnhf_manager,
                                                      std::unique_ptr<LLMQContext>& llmq_ctx,
                                                      CTxMemPool* mempool,
+                                                     const fs::path& data_dir,
                                                      bool fPruneMode,
                                                      bool is_addrindex_enabled,
                                                      bool is_governance_enabled,
@@ -121,6 +125,7 @@ void DashChainstateSetup(ChainstateManager& chainman,
                          std::unique_ptr<CMNHFManager>& mnhf_manager,
                          std::unique_ptr<LLMQContext>& llmq_ctx,
                          CTxMemPool* mempool,
+                         const fs::path& data_dir,
                          bool fReset,
                          bool fReindexChainState,
                          const Consensus::Params& consensus_params);
