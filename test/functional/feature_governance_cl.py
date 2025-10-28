@@ -142,7 +142,6 @@ class DashGovernanceTest (DashTestFramework):
         self.mocktime += delta
         for node in self.nodes:
             with node.assert_debug_log(expected_msgs=['UpdateCachesAndClean']):
-                node.mocktime = self.mocktime
                 node.setmocktime(self.mocktime)
                 node.mockscheduler(delta)
         # Move forward to satisfy GOVERNANCE_DELETION_DELAY, should actually remove old triggers now
@@ -150,7 +149,6 @@ class DashGovernanceTest (DashTestFramework):
         self.mocktime += delta
         for node in self.nodes:
             with node.assert_debug_log(expected_msgs=['UpdateCachesAndClean -- Governance Objects: 0']):
-                node.mocktime = self.mocktime
                 node.setmocktime(self.mocktime)
                 node.mockscheduler(delta)
         # Confirm in RPC
