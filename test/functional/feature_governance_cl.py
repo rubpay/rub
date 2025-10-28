@@ -136,21 +136,17 @@ class DashGovernanceTest (DashTestFramework):
         self.bump_mocktime(156)
         self.generate(self.nodes[0], 1, sync_fun=lambda: self.sync_blocks(self.nodes[0:5]))
 
-        self.log.info("Bump time to trigger governance cleanup")
-        # Trigger scheduler to mark old triggers for deletion
-        delta = 5 * 60
-        self.mocktime += delta
-        for node in self.nodes:
-            with node.assert_debug_log(expected_msgs=['UpdateCachesAndClean']):
-                node.setmocktime(self.mocktime)
-                node.mockscheduler(delta)
-        # Move forward to satisfy GOVERNANCE_DELETION_DELAY, should actually remove old triggers now
-        delta = 10 * 60
-        self.mocktime += delta
-        for node in self.nodes:
-            with node.assert_debug_log(expected_msgs=['UpdateCachesAndClean -- Governance Objects: 0']):
-                node.setmocktime(self.mocktime)
-                node.mockscheduler(delta)
+        self.log.info("Bump mocktime to trigger governance cleanup")
+        for delta, expected in (
+            (5 * 60, ['UpdateCachesAndClean']),  # mark old triggers for deletion
+            (10 * 60, ['UpdateCachesAndClean -- Governance Objects: 0']),  # deletion after delay
+        ):
+            self.mocktime += delta
+            for node in self.nodes:
+                with node.assert_debug_log(expected_msgs=expected):
+                    node.setmocktime(self.mocktime)
+                    node.mockscheduler(delta)
+
         # Confirm in RPC
         for node in self.nodes:
             assert_equal(len(node.gobject("list", "valid", "triggers")), 0)
